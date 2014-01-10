@@ -927,7 +927,7 @@ class DieAnotherDay(GEScenario):
         
         def cancelREResurrections(self,RE,ignoreResurrection=None):
             for resurrection in self.resurrections.values():
-                if resurrection.RE == RE and resurrection != ignoreResurrection: resurrection.Stop()
+                if resurrection.RE == RE and resurrection != ignoreResurrection: resurrection.stop()
                 
         def cancelResurrections(self):
             for resurrection in self.resurrections.values(): resurrection.resurrectionFailed()
@@ -1008,6 +1008,9 @@ class DieAnotherDay(GEScenario):
             
         def getRemainingTime(self):
             return self.DAD.resurrectionTime - self.timer.GetCurrentTime()
+        
+        def stop(self):
+            self.resurrectionFailed
         
         def resurrectionFailed(self):
             self.timer.Stop()
