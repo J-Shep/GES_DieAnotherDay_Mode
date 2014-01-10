@@ -1010,7 +1010,7 @@ class DieAnotherDay(GEScenario):
             return self.DAD.resurrectionTime - self.timer.GetCurrentTime()
         
         def stop(self):
-            self.resurrectionFailed
+            self.resurrectionFailed()
         
         def resurrectionFailed(self):
             self.timer.Stop()
