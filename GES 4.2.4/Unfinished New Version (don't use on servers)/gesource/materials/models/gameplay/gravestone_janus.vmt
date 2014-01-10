@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gameplay/gravestone_janus"
+	"$bumpmap" "models/gameplay/gravestone_janus_nrml"
+
+	"$envmap" "env_cubemap"
+	"$normalmapalphaenvmapmask" "1"
+	"$envmaptint" "[.25 .1 .025]"
+//	"$envmapcontrast" "1"
+
+	"$phong" "1"
+	"$phongexponent" "15"
+	"$lightwarptexture" "models\lightwarps\sharp01"
+	"$phongboost"	"5"
+	"$phongfresnelranges"	"[0.05 0.5 2]"
+	"$phongtint" "[.25 .125 .125]"
+	"$halflambert" "1"
+}

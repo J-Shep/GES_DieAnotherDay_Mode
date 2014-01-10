@@ -1,0 +1,3 @@
+This unfinished version is likely to contain bugs which could ruin this mode's gameplay or prevent it from being loaded, making death match mode be loaded instead.
+
+If you are a server owner, please only used released versions on your server.

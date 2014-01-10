@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gameplay/gravestone_mi6"
+	"$bumpmap" "models/gameplay/gravestone_mi6_nrml"
+
+	"$envmap" "env_cubemap"
+	"$normalmapalphaenvmapmask" "1"
+	"$envmaptint" "[.025 .1 .25]"
+//	"$envmapcontrast" "1"
+
+	"$phong" "1"
+	"$phongexponent" "15"
+	"$lightwarptexture" "models\lightwarps\sharp01"
+	"$phongboost"	"5"
+	"$phongfresnelranges"	"[0.05 0.5 2]"
+	"$phongtint" "[.25 .5 .75]"
+	"$halflambert" "1"
+}
