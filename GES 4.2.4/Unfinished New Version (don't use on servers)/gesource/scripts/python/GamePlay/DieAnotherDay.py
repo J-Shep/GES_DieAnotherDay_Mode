@@ -81,18 +81,12 @@ class DieAnotherDay(GEScenario):
         self.playersExemptFromSucideEliminaton = []
         
         self.waitingForPlayers = False
-        self.eliminateTeamJoiners = False
         
         self.mResurrectionQueue = []
         self.jResurrectionQueue = []
-        self.changingTeamEliminatedPlayers = []
-        self.mPlayerCount = 0
-        self.jPlayerCount = 0
-        self.botsTeam = {} #Needed to know when a bot has changed its team.
 
         self.resurrectedPlayers = []
         self.unspawnedEliminatedPlayers = []
-        #self.playersTeam = {} #Exists so that OnPlayerSpawn*( can know a spawned players previous team if they've changed it.
                 
         self.mSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_MI6)
         self.jSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_JANUS) 
@@ -124,15 +118,12 @@ class DieAnotherDay(GEScenario):
         self.jResurrectionQueue = None
         
         self.resurrectedBots = None
-        self.changingTeamEliminatedPlayers = None
-        self.botsTeam = None
         
         #Collections related to resurrection RE entities
         self.playersLRRTargetMonitor = None
         
         self.resurrectedPlayers = None
         self.unspawnedEliminatedPlayers = None
-        #self.playersTeam = None
     
     #1. Callback functions:
     def GetPrintName( self ):
@@ -170,12 +161,13 @@ class DieAnotherDay(GEScenario):
         
         if team != GEGlobal.TEAM_SPECTATOR:
             self.resurrections.playerHasDisconnected(player)
+            wasEliminated = self.isEliminatedPlayer(player)
             
             #Update the displayed survivor count for their old team:
-            if team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerLeaveTeam(self.isEliminatedPlayer(player))
-            else: self.jSurvivorCountDisplay.OnPlayerLeaveTeam(self.isEliminatedPlayer(player))
+            if team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
+            else: self.jSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
             
-            if self.isEliminatedPlayer(player): self.OnEliminatedPlayersLeavesTeam(player,team)
+            if wasEliminated: self.OnEliminatedPlayersLeavesTeam(player,team)
         
         if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
     
@@ -218,33 +210,50 @@ class DieAnotherDay(GEScenario):
         if REArea.GetTeamNumber() == player.GetTeamNumber(): self.resurrections.playerHasExitedFriendlyREArea(REArea,player)        
 
     def OnPlayerObserver(self,player):
-        team = player.GetTeamNumber()
-        GEUtil.DevWarning("OnPlayerObserver = " + str(team) + "\n")
-        if player not in self.unspawnedEliminatedPlayers:
-            if team == GEGlobal.TEAM_SPECTATOR:
-                self.mSurvivorCountDisplay.delayedTotalUpdate()   
-                self.jSurvivorCountDisplay.delayedTotalUpdate()
-            elif team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.delayedTotalUpdate()
-            elif team == GEGlobal.TEAM_JANUS: self.mSurvivorCountDisplay.delayedTotalUpdate()
-        else: self.unspawnedEliminatedPlayers.remove(player)
+        GEUtil.DevWarning("OnPlayerObserver--------------\n")
+        if player in self.unspawnedEliminatedPlayers: self.unspawnedEliminatedPlayers.remove(player)
+        else:
+            newTeam = player.GetTeamNumber()
+            oldTeam = self.pltracker.GetValue(player,"team")
+            wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
+            
+            if newTeam == GEGlobal.TEAM_SPECTATOR:
+                if oldTeam == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerBecomesSpectator(wasEliminated)
+                elif oldTeam == GEGlobal.TEAM_JANUS: self.jSurvivorCountDisplay.OnPlayerBecomesSpectator(wasEliminated)
+             
+            elif newTeam == GEGlobal.TEAM_MI6 or newTeam == GEGlobal.TEAM_JANUS:
+                self.mSurvivorCountDisplay.OnPlayerJoinedTeam(wasEliminated,True,oldTeam,newTeam)
+                self.jSurvivorCountDisplay.OnPlayerJoinedTeam(wasEliminated,True,oldTeam,newTeam)
+                
+            self.pltracker.SetValue(player,"team",newTeam)
 
     def OnPlayerSpawn(self,player):
         team = player.GetTeamNumber()
         
         if team != GEGlobal.TEAM_SPECTATOR:
-            if player.IsInitialSpawn(): self.pltracker.SetValue(player,self.trSpawned,True)
+            if player.IsInitialSpawn(): 
+                self.pltracker.SetValue(player,self.trSpawned,True)
+                self.pltracker.SetValue(player,"team",player.GetTeamNumber())
+                self.pltracker.SetValue(player,"elimination_cause","")
             
-            if player not in self.resurrectedPlayers:
-                #TODO only update both after team change when nessecary:
-                self.mSurvivorCountDisplay.delayedTotalUpdate()
-                self.jSurvivorCountDisplay.delayedTotalUpdate()
+            if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
+            else:
+                #Should the new team member who has spawned be eliminated?
+                wasEliminated = self.isEliminatedPlayer(player)
+                if not (self.mSurvivorCountDisplay.allPlayersAlive() and self.jSurvivorCountDisplay.allPlayersAlive()): self.OnPlayerEliminated(player)
                 
-#                 if self.playersTeam[player.GetPlayerName()] != team: 
-#                     oldTeam = self.playersTeam[player.GetPlayerName()]
-#                     if oldTeam == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.delayedTotalUpdate()
-#                     elif oldTeam == GEGlobal.TEAM_JANUS: self.jSurvivorCountDisplay.delayedTotalUpdate()
-                    
-            else: self.resurrectedPlayers.remove(player)
+                #Else:
+                newTeam = player.GetTeamNumber()
+                oldTeam = self.pltracker.GetValue(player,"team")
+                
+                if newTeam == oldTeam: oldTeam = -1
+                
+                if oldTeam == GEGlobal.TEAM_MI6 or newTeam == GEGlobal.TEAM_MI6: 
+                    self.mSurvivorCountDisplay.OnPlayerJoinedTeam(wasEliminated,self.isEliminatedPlayer(player),oldTeam,newTeam)
+                if oldTeam == GEGlobal.TEAM_JANUS or newTeam == GEGlobal.TEAM_JANUS:
+                    self.jSurvivorCountDisplay.OnPlayerJoinedTeam(wasEliminated,self.isEliminatedPlayer(player),oldTeam,newTeam)
+                
+                if oldTeam != newTeam: self.pltracker.SetValue(player,"team",newTeam)
              
         GEUtil.PopupMessage(player,"#GES_GP_DAD_NAME","#GES_GP_DAD_FIRST_SPAWN_INSTRUCTIONS")
         GEUtil.HudMessage(player, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
@@ -307,21 +316,22 @@ class DieAnotherDay(GEScenario):
                 if victim.GetTeamNumber() == GEGlobal.TEAM_MI6:GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_MI6_PLAYER_ELIMINATED",victim.GetPlayerName())
                 else: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_ELIMINATED",victim.GetPlayerName())
             #5. Eliminate the player
-            self.OnPlayerEliminated(victim,None,killer,weapon)
+            self.OnPlayerEliminated(victim,killer,weapon)
             self.unspawnedEliminatedPlayers.append(victim)
+            
             #6. Update the displayed survivor count for the victim's team:
             if victimsTeam == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnTeamMemberEliminated()
             else: self.jSurvivorCountDisplay.OnTeamMemberEliminated()
-            
                 
-    def OnPlayerEliminated(self,player,newTeam=None,killer=None,weapon=None):
+    def OnPlayerEliminated(self,player,killer=None,weapon=None):
         team = player.GetTeamNumber()
         #1.Eliminate the player
         self.eliminatePlayer(player)
         #If the round won't end because of this elimination:
         if GEMPGameRules.GetNumInRoundTeamPlayers(team) - 1 > 0:
             #2.Record that the player has been eliminated and prevent them from respawning:
-            if newTeam != None: team = newTeam
+            if killer: self.pltracker.SetValue(player,"elimination_cause","killed")
+            else: self.pltracker.SetValue(player,"elimination_cause","rules")
             self.addPlayerToResurrectionQueue(player,team)
             #3.Draw the eliminated player's resurrection queue message on their screen.
             self.drawEliminatedPlayerResQueueMessage(player)
@@ -369,24 +379,8 @@ class DieAnotherDay(GEScenario):
         GEMPGameRules.EndRound()
         
     def CanPlayerChangeTeam(self,player,oldTeam,newTeam):
-        GEUtil.DevWarning("- CanPlayerChangeTeam\n\n")
-        self.eliminateTeamJoiners = (self.mSurvivorCountDisplay.allPlayersAlive() and self.jSurvivorCountDisplay.allPlayersAlive()) == False
-        eliminatedInOldTeam = self.isEliminatedPlayer(player)
-        eliminatedInNewTeam = self.eliminateTeamJoiners or eliminatedInOldTeam
-        
-        #GEUtil.DevWarning("eliminateTeamJoiners?:" + str(self.eliminateTeamJoiners) + "\n")
-        if self.isEliminatedPlayer(player) and newTeam != GEGlobal.TEAM_SPECTATOR: self.changingTeamEliminatedPlayers.append(player)
-        
         if oldTeam == GEGlobal.TEAM_NONE: return True
-        elif oldTeam == GEGlobal.TEAM_SPECTATOR and player.IsInitialSpawn(): self.newPlayerWantsToJoinTeam(player,newTeam)
-        elif oldTeam == GEGlobal.TEAM_SPECTATOR: self.spectatorWantsToJoinTeam(player,newTeam)
         elif oldTeam != GEGlobal.TEAM_SPECTATOR and newTeam != GEGlobal.TEAM_SPECTATOR: self.playerWantsToChangeTheirTeam(player,oldTeam,newTeam)
-        
-        if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS: 
-            if eliminatedInOldTeam: self.OnEliminatedPlayersLeavesTeam(player,oldTeam)
-        
-        if eliminatedInNewTeam: self.OnPlayerEliminated(player,newTeam,None,None)
-        
         return True
         
     #2. Info Getting Functions:
@@ -498,7 +492,6 @@ class DieAnotherDay(GEScenario):
         return None
         
     def CanPlayerRespawn(self,player):
-        if player in self.changingTeamEliminatedPlayers: self.changingTeamEliminatedPlayers.remove(player) #TODO
         wasEliminated = self.isEliminatedPlayer(player)
         isEliminatedNow = wasEliminated
         team = player.GetTeamNumber()
@@ -537,10 +530,6 @@ class DieAnotherDay(GEScenario):
     #------ Team Change Response Functions
     def isEliminatedPlayer(self,player):
         return self.pltracker.GetValue(player,self.trEliminated)
-
-    def newPlayerWantsToJoinTeam(self,player,newTeam):
-        #GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","#GES_GP_DAD_NEW_PLAYER_CANT_JOIN_TEAM")
-        return
     
     def playerWantsToChangeTheirTeam(self,player,oldTeam,newTeam):
         #1. Prevent their team change sucide from eliminating them
@@ -555,10 +544,6 @@ class DieAnotherDay(GEScenario):
         self.drawEliminatedPlayerResQueueMessagesForSide(team)
     
     def playerWantsToBecomeSpectator(self,player,oldTeam):
-        return
-    
-    def spectatorWantsToJoinTeam(self,player,newTeam):
-        #if self.playerNotBot(player): GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","#GES_GP_DAD_ELIMINATED_SPECTATOR_CANT_JOIN_TEAM")
         return
 
     #------------------------------
@@ -633,21 +618,36 @@ class DieAnotherDay(GEScenario):
         def OnRoundStart(self):
             self.delayedTotalUpdate()
             
-        def OnPlayerJoinTeam(self,willBeEliminated):
-            self.playerCount += 1
-            if not willBeEliminated: self.survivorCount += 1
+        def OnPlayerJoinedTeam(self,wasEliminated,isEliminated,oldTeam,newTeam):
+            GEUtil.DevWarning("1.OnPlayerJoinedTeam()\n")
+            if oldTeam == self.team:
+                self.playerCount -= 1
+                if not wasEliminated: self.survivorCount -= 1
+            elif newTeam == self.team:
+                self.playerCount += 1
+                if not isEliminated: self.survivorCount += 1
+                
             self.totalUpdate()
             
         def OnPlayerLeaveTeam(self,wasEliminated):
+            GEUtil.DevWarning("2. OnPlayerLeaveTeam()\n")
+            self.playerCount -= 1
+            if not wasEliminated: self.survivorCount -= 1
+            self.totalUpdate()
+        
+        def OnPlayerBecomesSpectator(self,wasEliminated):
+            GEUtil.DevWarning("3. OnPlayerBecomesSpectator()\n")
             self.playerCount -= 1
             if not wasEliminated: self.survivorCount -= 1
             self.totalUpdate()
         
         def OnTeamMemberEliminated(self):
+            GEUtil.DevWarning("4. OnTeamMemberEliminated()\n")
             self.survivorCount -= 1
             self.updateSurvivorCount()
             
         def OnTeamMemberResurrected(self):
+            GEUtil.DevWarning("5. OnTeamMemberResurrected()\n")
             self.survivorCount += 1
             self.updateSurvivorCount()
     
