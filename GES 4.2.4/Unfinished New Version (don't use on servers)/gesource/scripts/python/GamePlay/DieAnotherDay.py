@@ -89,7 +89,7 @@ class DieAnotherDay(GEScenario):
         self.unspawnedEliminatedPlayers = []
                 
         self.mSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_MI6)
-        self.jSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_JANUS) 
+        self.jSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_JANUS)
         
     def Cleanup( self ):
         super( DieAnotherDay, self ).Cleanup()
@@ -240,7 +240,7 @@ class DieAnotherDay(GEScenario):
             else:
                 #Should the new team member who has spawned be eliminated?
                 wasEliminated = self.isEliminatedPlayer(player)
-                if not (self.mSurvivorCountDisplay.allPlayersAlive() and self.jSurvivorCountDisplay.allPlayersAlive()): self.OnPlayerEliminated(player)
+                #if not (self.mSurvivorCountDisplay.allPlayersAlive() and self.jSurvivorCountDisplay.allPlayersAlive()): self.OnPlayerEliminated(player)
                 
                 #Else:
                 newTeam = player.GetTeamNumber()
@@ -492,16 +492,15 @@ class DieAnotherDay(GEScenario):
         return None
         
     def CanPlayerRespawn(self,player):
-        wasEliminated = self.isEliminatedPlayer(player)
-        isEliminatedNow = wasEliminated
-        team = player.GetTeamNumber()
-    
-        if isEliminatedNow:     
+        #if not self.isEliminatedPlayer(player):
+            #if not (self.mSurvivorCountDisplay.allPlayersAlive() and self.jSurvivorCountDisplay.allPlayersAlive()): self.OnPlayerEliminated(player)
+        
+        if self.isEliminatedPlayer(player):
             player.SetScoreBoardColor(GEGlobal.SB_COLOR_ELIMINATED)
             return False
-
-        player.SetScoreBoardColor( GEGlobal.SB_COLOR_NORMAL )
-        return True
+        else:
+            player.SetScoreBoardColor( GEGlobal.SB_COLOR_NORMAL )
+            return True
     
     def decideWhereREWillBeLocated(self,victim,killer,weapon):
         whenSpawnedMoveRETo = None
