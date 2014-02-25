@@ -86,7 +86,6 @@ class DieAnotherDay(GEScenario):
         self.jResurrectionQueue = []
 
         self.resurrectedPlayers = []
-        self.unspawnedEliminatedPlayers = []
                 
         self.mSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_MI6)
         self.jSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_JANUS)
@@ -125,7 +124,6 @@ class DieAnotherDay(GEScenario):
         self.playersLRRTargetMonitor = None
         
         self.resurrectedPlayers = None
-        self.unspawnedEliminatedPlayers = None
     
     #1. Callback functions:
     def GetPrintName( self ):
@@ -220,10 +218,7 @@ class DieAnotherDay(GEScenario):
         
         GEUtil.DevWarning("Current team = " + str(currentTeam) + "----\n")
         GEUtil.DevWarning("TEAM_SPECTATOR = " + str(GEGlobal.TEAM_SPECTATOR) + "----\n")
-#        
-#         if player in self.unspawnedEliminatedPlayers:
-#             self.unspawnedEliminatedPlayers.remove(player)
-        #For when an alive player leaves a team to become a spectator:
+        
         if currentTeam == GEGlobal.TEAM_SPECTATOR:
             GEUtil.DevWarning("Alive player now spectator ----- \n\n") #TODO joe
             wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
@@ -297,7 +292,6 @@ class DieAnotherDay(GEScenario):
         self.jSurvivorCountDisplay.hide()
 
         del self.resurrectedPlayers[:]
-        del self.unspawnedEliminatedPlayers[:]
         del self.playersExemptFromSucideEliminaton[:]
         del self.mResurrectionQueue[:]
         del self.jResurrectionQueue[:]
@@ -343,7 +337,6 @@ class DieAnotherDay(GEScenario):
                 else: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_ELIMINATED",victim.GetPlayerName())
             #5. Eliminate the player
             self.OnPlayerEliminated(victim,killer,weapon)
-            self.unspawnedEliminatedPlayers.append(victim)
             
             #6. Update the displayed survivor count for the victim's team:
             if victimsTeam == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnTeamMemberEliminated()
