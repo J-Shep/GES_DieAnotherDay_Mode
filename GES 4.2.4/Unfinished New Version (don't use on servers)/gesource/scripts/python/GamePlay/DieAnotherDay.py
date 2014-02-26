@@ -168,9 +168,8 @@ class DieAnotherDay(GEScenario):
             else: self.jSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
             
             if wasEliminated:
-                self.deleteEliminatedPlayersResQueueMessage(player)
                 self.removePlayerFromTeamsRQueue(player,team)
-                self.drawEliminatedPlayerResQueueMessagesForSide(team)
+                self.resurrections.deleteNotInUseRE(team)
         
         if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
     
@@ -220,9 +219,9 @@ class DieAnotherDay(GEScenario):
         self.pltracker.SetValue(player,"team",currentTeam)
         
         if currentTeam == GEGlobal.TEAM_SPECTATOR and (oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS):
+            self.removePlayerFromTeamsRQueue(player,oldTeam)
             self.resurrections.deleteNotInUseRE(oldTeam)
             wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
-            #self.deleteEliminatedPlayersResQueueMessage(player)
             
             if oldTeam == GEGlobal.TEAM_MI6:
                 self.mSurvivorCountDisplay.OnPlayerBecomesSpectator(wasEliminated)
@@ -237,11 +236,13 @@ class DieAnotherDay(GEScenario):
             self.pltracker.SetValue(player,"team",currentTeam)
             
             if currentTeam != oldTeam:
+                if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS:
+                    self.removePlayerFromTeamsRQueue(player, oldTeam)
+                    self.resurrections.deleteNotInUseRE(oldTeam)
+                    
                 if currentTeam == GEGlobal.TEAM_MI6 or currentTeam == GEGlobal.TEAM_JANUS:
                     self.REs.spawnNewResurrectionEntity(player,currentTeam)
-                    
-                if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS:
-                    self.resurrections.deleteNotInUseRE(oldTeam)
+                    self.drawEliminatedPlayerResQueueMessage(currentTeam)
                 
                 self.mSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
                 self.jSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
@@ -355,7 +356,6 @@ class DieAnotherDay(GEScenario):
             self.addPlayerToResurrectionQueue(player,team)
             #3.Draw the eliminated player's resurrection queue message on their screen.
             self.drawEliminatedPlayerResQueueMessage(player)
-            self.drawEliminatedPlayerResQueueMessagesForSide(team)
             #4.Spawn a RE at the dead player's death location or the ground beneath if they died in the air. If they died above the jump height their RE will be spawned at a spawn point.
             self.REs.spawnNewResurrectionEntity(player,team,self.decideWhereREWillBeLocated(player,killer,weapon))
 
@@ -426,31 +426,37 @@ class DieAnotherDay(GEScenario):
             else: return DieAnotherDay.mUsedRERadarColour
         else:
             if isREIcon: return DieAnotherDay.jRERadarColour
-            else: return DieAnotherDay.jUsedRERadarColour  
+            else: return DieAnotherDay.jUsedRERadarColour
 
-    def drawEliminatedPlayerResQueueMessagesForSide(self,side):
-        elimPlayerList = None
-        if side == GEGlobal.TEAM_MI6: elimPlayerList = self.mResurrectionQueue
-        else: elimPlayerList = self.jResurrectionQueue
-        
-        for player in elimPlayerList: self.drawEliminatedPlayerResQueueMessage(player,elimPlayerList,GEMPGameRules.GetRoundTimeLeft())
+    def getSidesResQueue(self,team):
+        if team == GEGlobal.TEAM_MI6: return self.mResurrectionQueue
+        else: return self.jResurrectionQueue         
 
-    def drawEliminatedPlayerResQueueMessage(self,player,elimPlayerList=None,rtLeft=None):
-        if elimPlayerList == None:
-            if player.GetTeamNumber() == GEGlobal.TEAM_MI6: elimPlayerList = self.mResurrectionQueue
-            else: elimPlayerList = self.jResurrectionQueue
-            
-        if rtLeft == None: rtLeft = GEMPGameRules.GetRoundTimeLeft()
+    def updateResQueuePlayerCount(self,team):
+        resQueue = self.getSidesResQueue(team)
         
-        if player in elimPlayerList: GEUtil.HudMessage(player,"#GES_GP_DAD_RESURRECTION_QUEUE_POSITION\r%i" % (elimPlayerList.index(player) + 1),-1,DieAnotherDay.resBarQueueTxtY,DieAnotherDay.RQPositionColour,rtLeft,DieAnotherDay.resQueueMessageChannel)
+        for player in resQueue:
+            self.drawEliminatedPlayerResQueueMessage(player,resQueue)
+
+    def drawEliminatedPlayerResQueueMessage(self,player,resQueue=None):
+        if resQueue == None: 
+            resQueue = self.getSidesResQueue(player.GetTeamNumber())
+        
+        GEUtil.InitHudProgressBar(player,DieAnotherDay.resQueueMessageChannel, 
+                                  title="#GES_GP_DAD_RESURRECTION_QUEUE_POSITION", 
+                                  flags=GEGlobal.HUDPB_SHOWVALUE, 
+                                  max_value=len(resQueue), 
+                                  x=DieAnotherDay.resBarQueueTxtY, 
+                                  y=DieAnotherDay.resBarQueueTxtY,
+                                  wide=120, 
+                                  tall=60, 
+                                  color=DieAnotherDay.RQPositionColour, 
+                                  curr_value=(resQueue.index(player)))
+            #GEUtil.HudMessage(player,"#GES_GP_DAD_RESURRECTION_QUEUE_POSITION\r%i" % (elimPlayerList.index(player) + 1),-1,DieAnotherDay.resBarQueueTxtY,DieAnotherDay.RQPositionColour,rtLeft,DieAnotherDay.resQueueMessageChannel)
             
     @staticmethod
     def playerNotBot(player):
-        return player.__class__.__name__ != "CGEBotPlayer"    
-    
-    #4. Resurrection Queue Functions:
-    def deleteEliminatedPlayersResQueueMessage(self,player):
-        GEUtil.HudMessage(player,"",-1,0.75,DieAnotherDay.RQPositionColour,0,DieAnotherDay.resQueueMessageChannel)
+        return player.__class__.__name__ != "CGEBotPlayer"
     
     def addPlayerToResurrectionQueue(self,player,team):
         teamsRQueue = None
@@ -483,7 +489,9 @@ class DieAnotherDay(GEScenario):
         if team == GEGlobal.TEAM_MI6: rQueue = self.mResurrectionQueue
         else: rQueue = self.jResurrectionQueue
         
-        if player in rQueue: rQueue.remove(player)
+        if player in rQueue: 
+            rQueue.remove(player)
+            self.updateResQueuePlayerCount(team)
         
     def delayedResurrectionPBRemovalIfNoActiveResurrectionsAfterDelay(self,timer,update_type,player):
         if update_type == Timer.UPDATE_FINISH:
@@ -513,6 +521,7 @@ class DieAnotherDay(GEScenario):
         if resurrectedPlayer != None:
             self.pltracker.SetValue(resurrectedPlayer,self.trEliminated,False)
             self.eliminatedPlayerCount -= 1
+            self.updateResQueuePlayerCount(areasTeam)
             return resurrectedPlayer
         return None
         
@@ -1237,7 +1246,7 @@ class DieAnotherDay(GEScenario):
                             self.DAD.resurrectedPlayers.append(resurrectedPlayer)
                             
                             #17.Remove the resurrection queue position message from the resurrected player's screen.
-                            self.DAD.deleteEliminatedPlayersResQueueMessage(resurrectedPlayer)
+                            GEUtil.removeHudProgressBar(resurrectedPlayer, DieAnotherDay.resQueueMessageChannel)
                             #18. Update the displayed survivor count for the resurrected player's team
                             if self.team == GEGlobal.TEAM_MI6: self.DAD.mSurvivorCountDisplay.OnTeamMemberResurrected()
                             else: self.DAD.jSurvivorCountDisplay.OnTeamMemberResurrected()
