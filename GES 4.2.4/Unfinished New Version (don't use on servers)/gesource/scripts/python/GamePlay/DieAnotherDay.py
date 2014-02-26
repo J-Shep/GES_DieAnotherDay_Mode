@@ -54,7 +54,7 @@ class DieAnotherDay(GEScenario):
     
     survivorCountPBY = 0.01
     spectatorSCountPBY = 0.12
-    resBarQueueTxtY = 0.765
+    resBarY = 0.765
     
     mSurvivorCountPBX = 0.30
     survivorCountSeperationDistance = 0.20
@@ -221,6 +221,7 @@ class DieAnotherDay(GEScenario):
         if currentTeam == GEGlobal.TEAM_SPECTATOR and (oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS):
             self.removePlayerFromTeamsRQueue(player,oldTeam)
             self.resurrections.deleteNotInUseRE(oldTeam)
+            GEUtil.RemoveHudProgressBar(player, DieAnotherDay.resQueueMessageChannel)
             wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
             
             if oldTeam == GEGlobal.TEAM_MI6:
@@ -239,10 +240,12 @@ class DieAnotherDay(GEScenario):
                 if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS:
                     self.removePlayerFromTeamsRQueue(player, oldTeam)
                     self.resurrections.deleteNotInUseRE(oldTeam)
+                    GEUtil.RemoveHudProgressBar(player, DieAnotherDay.resQueueMessageChannel)
                     
                 if currentTeam == GEGlobal.TEAM_MI6 or currentTeam == GEGlobal.TEAM_JANUS:
                     self.REs.spawnNewResurrectionEntity(player,currentTeam)
-                    self.drawEliminatedPlayerResQueueMessage(currentTeam)
+                    self.addPlayerToResurrectionQueue(player, currentTeam)
+                    self.drawEliminatedPlayerResQueueMessage(player)
                 
                 self.mSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
                 self.jSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
@@ -439,20 +442,23 @@ class DieAnotherDay(GEScenario):
             self.drawEliminatedPlayerResQueueMessage(player,resQueue)
 
     def drawEliminatedPlayerResQueueMessage(self,player,resQueue=None):
-        if resQueue == None: 
-            resQueue = self.getSidesResQueue(player.GetTeamNumber())
-        
-        GEUtil.InitHudProgressBar(player,DieAnotherDay.resQueueMessageChannel, 
-                                  title="#GES_GP_DAD_RESURRECTION_QUEUE_POSITION", 
-                                  flags=GEGlobal.HUDPB_SHOWVALUE, 
-                                  max_value=len(resQueue), 
-                                  x=DieAnotherDay.resBarQueueTxtY, 
-                                  y=DieAnotherDay.resBarQueueTxtY,
-                                  wide=120, 
-                                  tall=60, 
-                                  color=DieAnotherDay.RQPositionColour, 
-                                  curr_value=(resQueue.index(player)))
-            #GEUtil.HudMessage(player,"#GES_GP_DAD_RESURRECTION_QUEUE_POSITION\r%i" % (elimPlayerList.index(player) + 1),-1,DieAnotherDay.resBarQueueTxtY,DieAnotherDay.RQPositionColour,rtLeft,DieAnotherDay.resQueueMessageChannel)
+        if self.playerNotBot(player):
+            if resQueue == None: 
+                resQueue = self.getSidesResQueue(player.GetTeamNumber())
+            
+            GEUtil.InitHudProgressBar(player, DieAnotherDay.resQueueMessageChannel, title="#GES_GP_DAD_RESURRECTION_QUEUE_POSITION", flags=GEGlobal.HUDPB_SHOWVALUE, max_value=len(resQueue), x=-1, y=0.75, color=DieAnotherDay.RQPositionColour, curr_value=resQueue.index(player))            
+            
+#     player_or_team -- GEPlayer.CGEPlayer or Team Number
+#     index -- int
+#     title -- str
+#     flags -- int
+#     max_value -- float
+#     x -- float
+#     y -- float
+#     wide -- int
+#     tall -- int
+#     color -- GEUtil.Color
+#     curr_value -- float
             
     @staticmethod
     def playerNotBot(player):
@@ -1187,13 +1193,13 @@ class DieAnotherDay(GEScenario):
                             self.RE.setupYellowObjective()
                         #4. [Resurrection bar not already shown] Show the resurrection progress bar:
                         usersResCount = self.DAD.resurrections.getPlayersResurrectionCount(self.user)
-                        if usersResCount == 1: GEUtil.InitHudProgressBar(self.user,self.DAD.resurrectionPBIndex,"1",GEGlobal.HUDPB_SHOWBAR,self.DAD.resurrectionTime,-1,DieAnotherDay.resBarQueueTxtY,120,16,self.DAD.getSidesColour(self.team))
+                        if usersResCount == 1: GEUtil.InitHudProgressBar(self.user,self.DAD.resurrectionPBIndex,"1",GEGlobal.HUDPB_SHOWBAR,self.DAD.resurrectionTime,-1,DieAnotherDay.resBarY,120,16,self.DAD.getSidesColour(self.team))
                         else: GEUtil.UpdateHudProgressBar(self.user,self.DAD.resurrectionPBIndex,0,str(usersResCount),self.DAD.getSidesColour(self.team))
                     
                     elif update_type == Timer.UPDATE_RUN:
                         #If the resurrection has failed:
                         #TODO BUG singleplayer disconnect: RTTI error sometimes
-                        if self.hasUserDisconnected or self.hasUserDied or self.team != self.user.GetTeamNumber(): self.resurrectionFailed()#HAS DIED : TESTED
+                        if self.hasUserDisconnected or self.hasUserDied or self.team != self.user.GetTeamNumber(): self.resurrectionFailed()
                         elif self.LRREnabled == False and self.proximityEnabled == False: 
                             self.resurrectionFailed() #TESTED
                         #If it hasn't failed:
