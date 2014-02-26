@@ -216,13 +216,9 @@ class DieAnotherDay(GEScenario):
         currentTeam = player.GetTeamNumber()
         self.pltracker.SetValue(player,"team",currentTeam)
         
-        GEUtil.DevWarning("Current team = " + str(currentTeam) + "----\n")
-        GEUtil.DevWarning("TEAM_SPECTATOR = " + str(GEGlobal.TEAM_SPECTATOR) + "----\n")
-        
-        if currentTeam == GEGlobal.TEAM_SPECTATOR:
-            GEUtil.DevWarning("Alive player now spectator ----- \n\n") #TODO joe
+        if currentTeam == GEGlobal.TEAM_SPECTATOR and (oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS):
+            self.resurrections.deleteNotInUseRE(oldTeam)
             wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
-            GEUtil.DevWarning("wasEliminated = " + str(wasEliminated) + "\n\n")
             
             if oldTeam == GEGlobal.TEAM_MI6:
                 self.mSurvivorCountDisplay.OnPlayerBecomesSpectator(wasEliminated)
@@ -231,20 +227,20 @@ class DieAnotherDay(GEScenario):
                             
     def observerTeamChangeCheck(self,timer,update_type,player):
         if update_type == Timer.UPDATE_FINISH:
+            GEUtil.DevWarning("observerTeamChangeCheck\n")
             oldTeam = self.pltracker.GetValue(player,"team")
             currentTeam = player.GetTeamNumber()
             self.pltracker.SetValue(player,"team",currentTeam)
             
             if currentTeam != oldTeam:
-                if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS:
-                    self.resurrections.deleteNotInUseRE(oldTeam)
-                    
                 if currentTeam == GEGlobal.TEAM_MI6 or currentTeam == GEGlobal.TEAM_JANUS:
                     self.REs.spawnNewResurrectionEntity(player,currentTeam)
                     
-                if oldTeam != GEGlobal.TEAM_SPECTATOR or currentTeam != GEGlobal.TEAM_SPECTATOR:              
-                    self.mSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
-                    self.jSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
+                if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS:
+                    self.resurrections.deleteNotInUseRE(oldTeam)
+                
+                self.mSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
+                self.jSurvivorCountDisplay.OnPlayerJoinedTeam(True,True,oldTeam,currentTeam)
 
     def OnPlayerSpawn(self,player):
         team = player.GetTeamNumber()
