@@ -167,7 +167,10 @@ class DieAnotherDay(GEScenario):
             if team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
             else: self.jSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
             
-            if wasEliminated: self.OnEliminatedPlayersLeavesTeam(player,team)
+            if wasEliminated:
+                self.deleteEliminatedPlayersResQueueMessage(player)
+                self.removePlayerFromTeamsRQueue(player,team)
+                self.drawEliminatedPlayerResQueueMessagesForSide(team)
         
         if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
     
@@ -219,6 +222,7 @@ class DieAnotherDay(GEScenario):
         if currentTeam == GEGlobal.TEAM_SPECTATOR and (oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS):
             self.resurrections.deleteNotInUseRE(oldTeam)
             wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
+            --self.deleteEliminatedPlayersResQueueMessage(player)
             
             if oldTeam == GEGlobal.TEAM_MI6:
                 self.mSurvivorCountDisplay.OnPlayerBecomesSpectator(wasEliminated)
@@ -547,18 +551,6 @@ class DieAnotherDay(GEScenario):
     #------ Team Change Response Functions
     def isEliminatedPlayer(self,player):
         return self.pltracker.GetValue(player,self.trEliminated)
-    
-    def playerWantsToChangeTheirTeam(self,player,oldTeam,newTeam):
-        #1. Prevent their team change sucide from eliminating them
-        return
-        
-        #if self.playerNotBot(player): GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","#GES_GP_DAD_PLAYER_CANT_CHANGE_TEAM")
-    
-    def OnEliminatedPlayersLeavesTeam(self,player,team):
-        REWasDeleted = self.resurrections.deleteNotInUseRE(team)
-        self.deleteEliminatedPlayersResQueueMessage(player)
-        self.removePlayerFromTeamsRQueue(player,team)
-        self.drawEliminatedPlayerResQueueMessagesForSide(team)
     
     def playerWantsToBecomeSpectator(self,player,oldTeam):
         return
