@@ -222,7 +222,7 @@ class DieAnotherDay(GEScenario):
         if currentTeam == GEGlobal.TEAM_SPECTATOR and (oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS):
             self.resurrections.deleteNotInUseRE(oldTeam)
             wasEliminated = (self.pltracker.GetValue(player,"elimination_cause") == "killed")
-            --self.deleteEliminatedPlayersResQueueMessage(player)
+            #self.deleteEliminatedPlayersResQueueMessage(player)
             
             if oldTeam == GEGlobal.TEAM_MI6:
                 self.mSurvivorCountDisplay.OnPlayerBecomesSpectator(wasEliminated)
