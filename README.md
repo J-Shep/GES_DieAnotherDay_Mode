@@ -8,7 +8,7 @@ DAD mode is a remake of Mefy's MOHAA "Freeze Tag" mode, a teamplay elimination m
 resurrect their eliminated team mates by interacting with resurrection entities, either by standing next to them or
 by firing a resurrection laser at them.
 
-There's still a lot of work which needs to be done to finish this mode so I would appreciate any help people could
+There's still a lot of work which needs to be done to finish this mode, so I would appreciate any help people could
 provide to help me get this mode finished as soon as possible.
 
 http://www.moddb.com/mods/goldeneye-source
