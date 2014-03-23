@@ -162,10 +162,10 @@ class DieAnotherDay(GEScenario):
         if team != GEGlobal.TEAM_SPECTATOR:
             self.resurrections.playerHasDisconnected(player)
             wasEliminated = self.isEliminatedPlayer(player)
-            
+
             #Update the displayed survivor count for their old team:
-            if team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
-            else: self.jSurvivorCountDisplay.OnPlayerLeaveTeam(wasEliminated)
+            if team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerLeavesTeam(wasEliminated)
+            else: self.jSurvivorCountDisplay.OnPlayerLeavesTeam(wasEliminated)
             
             if wasEliminated:
                 self.OnEliminatedPlayerLeavesTeam(player,team)
