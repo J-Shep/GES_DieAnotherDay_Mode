@@ -181,9 +181,6 @@ class DieAnotherDay(GEScenario):
                         if hitEntity.GetClassname() == "ge_capturearea":
                             if hitEntity.GetTeamNumber() == player.GetTeamNumber() and self.REs.areaUsable(hitEntity): self.beginREInteraction(player,hitEntity,False)
         
-        if text == "!gesrocks":
-            GEUtil.DevWarning("self.eliminatedPlayerCount:" + str(self.eliminatedPlayerCount) + "\n") #TODO joe
-        
         return True
         
     def OnCaptureAreaSpawned( self, area ):
@@ -341,15 +338,22 @@ class DieAnotherDay(GEScenario):
         
         #If the round won't end because of this elimination:
         if GEMPGameRules.GetNumInRoundTeamPlayers(team) - 1 > 0:
-            #Record that the player has been eliminated and prevent them from respawning:
-            if killer: self.pltracker.SetValue(player,"elimination_cause","killed")
-            else: self.pltracker.SetValue(player,"elimination_cause","rules")
+            self.AfterPlayerEliminated(player,killer != None)
             
-            self.AfterPlayerEliminated(player)
-            
-    def AfterPlayerEliminated(self,player):
+    def AfterPlayerEliminated(self,player,killElimination):
+        #Record that the player has been eliminated and prevent them from respawning:
+        moveTo = None
+        if killElimination:
+            if killElimination: 
+                self.pltracker.SetValue(player,"elimination_cause","killed")
+                GEUtil.DevWarning("Touching ground?:" + str(self.isPlayerTouchingGround(player)))
+                if self.isPlayerTouchingGround(player):
+                    moveTo = player.GetAbsOrigin()
+            else: 
+                self.pltracker.SetValue(player,"elimination_cause","rules")
+        
         currentTeam = player.GetTeamNumber()
-        self.REs.spawnNewResurrectionEntity(player,currentTeam)
+        self.REs.spawnNewResurrectionEntity(player,currentTeam,moveTo)
         self.addPlayerToResurrectionQueue(player,currentTeam)
         self.drawEliminatedPlayerResQueueMessage(player)
         
@@ -451,20 +455,17 @@ class DieAnotherDay(GEScenario):
     
     def addPlayerToResurrectionQueue(self,player,team):
         teamsRQueue = None
-        
         if team == GEGlobal.TEAM_MI6: teamsRQueue = self.mResurrectionQueue
         else: teamsRQueue = self.jResurrectionQueue
-        
-        #Prevent players from having to wait behind bots in their side's resurrection queue:
         #Player Insertion:
         if self.playerNotBot(player):
             positionOfBotNearestRQueueFront = self.getPositionOfBotNearestQueueFront(teamsRQueue)
-            
+             
             if positionOfBotNearestRQueueFront == -1: teamsRQueue.append(player)
             else:
                 bot = teamsRQueue[positionOfBotNearestRQueueFront]
                 teamsRQueue.insert(positionOfBotNearestRQueueFront,player)
-                teamsRQueue.remove(bot)
+                teamsRQueue.remove(bot) #TODO joe: nessesecary statement?
                 teamsRQueue.append(bot)
             
         #Bot Insertion:
