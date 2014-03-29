@@ -32,8 +32,8 @@ class DieAnotherDay(GEScenario):
     
     eliminatedPlayerHUDUpdateDelay = 1.0
     
-    maxSeperationBetweenGroundAndJumpingPlayer = 45.00
-    maxSeperationDistanceBetweenGroundAndGroundedPlayer = 8.04
+    maxDistanceBetweenGroundAndJumpingPlayer = 46.00 #It's actually less than this & > 45.00. TODO Joe
+    maxDistanceBetweenGroundAndPlayerOrigin = 8.04
     
     #--------------- GUI Constants:
     mColour = GEUtil.CColor(0,150,255,255)
@@ -537,16 +537,24 @@ class DieAnotherDay(GEScenario):
         return whenSpawnedMoveRETo    
     
     def isPlayerTouchingGround(self,player):
+        return self.canFindGroundBeneathPlayer(player,self.maxDistanceBetweenGroundAndPlayerOrigin)
+
+    def isPlayerJumping(self,player):
+        if self.isPlayerTouchingGround(player):
+            return False
+        return self.canFindGroundBeneathPlayer(player,self.maxDistanceBetweenGroundAndJumpingPlayer)
+        
+    def canFindGroundBeneathPlayer(self,player,searchDistance):
         origin = player.GetAbsOrigin()
-        endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),self.maxSeperationDistanceBetweenGroundAndGroundedPlayer)
+        endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),searchDistance)
         returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)#GE:S bot bug: can't ignore bot player unless PLAYER is traceable.
-        
+
         #In case the trace went through a gap between steps:
-        if returned == None:
-            origin.__setitem__(1,origin.__getitem__(1) + 5.00)
-            endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),50.00)
-            returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)
-        
+#         if returned == None:
+#             origin.__setitem__(1,origin.__getitem__(1) + 5.00)
+#             endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),searchDistance)
+#             returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)
+          
         return returned != None
     
     #------ Team Change Response Functions
