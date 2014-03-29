@@ -22,10 +22,10 @@ Translators:
 Supported Languages: English,French,German,Spanish,Polish and Italian.
 
 @author(s): Joe
-@version: Alpha 1.10 Z.H
+@version: Alpha 1.10
 '''
 class DieAnotherDay(GEScenario):
-    version = "Alpha 1.10 Z.H WIP"
+    version = "Alpha 1.10 WIP"
     
     trEliminated = "eliminated"
     trSpawned = "spawned"
@@ -180,7 +180,7 @@ class DieAnotherDay(GEScenario):
                     if hitEntity != None:
                         if hitEntity.GetClassname() == "ge_capturearea":
                             if hitEntity.GetTeamNumber() == player.GetTeamNumber() and self.REs.areaUsable(hitEntity): self.beginREInteraction(player,hitEntity,False)
-        
+
         return True
         
     def OnCaptureAreaSpawned( self, area ):
@@ -338,19 +338,16 @@ class DieAnotherDay(GEScenario):
         
         #If the round won't end because of this elimination:
         if GEMPGameRules.GetNumInRoundTeamPlayers(team) - 1 > 0:
-            self.AfterPlayerEliminated(player,killer != None)
+            self.AfterPlayerEliminated(player,killer,weapon)
             
-    def AfterPlayerEliminated(self,player,killElimination):
+    def AfterPlayerEliminated(self,player,killer,weapon):
         #Record that the player has been eliminated and prevent them from respawning:
-        moveTo = None
-        if killElimination:
-            if killElimination: 
-                self.pltracker.SetValue(player,"elimination_cause","killed")
-                GEUtil.DevWarning("Touching ground?:" + str(self.isPlayerTouchingGround(player)))
-                if self.isPlayerTouchingGround(player):
-                    moveTo = player.GetAbsOrigin()
-            else: 
-                self.pltracker.SetValue(player,"elimination_cause","rules")
+        moveTo = self.decideWhereREWillBeLocated(player,killer,weapon)
+
+        if killer != None:
+            self.pltracker.SetValue(player,"elimination_cause","killed")
+        else:
+            self.pltracker.SetValue(player,"elimination_cause","rules")
         
         currentTeam = player.GetTeamNumber()
         self.REs.spawnNewResurrectionEntity(player,currentTeam,moveTo)
@@ -528,13 +525,14 @@ class DieAnotherDay(GEScenario):
     def decideWhereREWillBeLocated(self,victim,killer,weapon):
         whenSpawnedMoveRETo = None
         
-        if self.isPlayerTouchingGround(victim):
-            #kill command? player_hurt map trigger?
-            if killer != None and weapon != None: whenSpawnedMoveRETo = victim.GetAbsOrigin()
+        if killer != None and weapon != None:
+            if self.isPlayerTouchingGround(victim):
+                whenSpawnedMoveRETo = victim.GetAbsOrigin()
+            elif self.isPlayerJumping(victim):
+                whenSpawnedMoveRETo = victim.GetAbsOrigin()
+                #whenSpawnedMoveRETo = self.getVecForGroundBeneathJumpingPlayer(victim)#TODO Joe
 
-        #else: whenSpawnedMoveRETo = self.getVecForGroundBeneathJumpingPlayer(victim)
-
-        return whenSpawnedMoveRETo    
+        return whenSpawnedMoveRETo
     
     def isPlayerTouchingGround(self,player):
         return self.canFindGroundBeneathPlayer(player,self.maxDistanceBetweenGroundAndPlayerOrigin)
@@ -543,7 +541,7 @@ class DieAnotherDay(GEScenario):
         if self.isPlayerTouchingGround(player):
             return False
         return self.canFindGroundBeneathPlayer(player,self.maxDistanceBetweenGroundAndJumpingPlayer)
-        
+
     def canFindGroundBeneathPlayer(self,player,searchDistance):
         origin = player.GetAbsOrigin()
         endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),searchDistance)
@@ -554,7 +552,7 @@ class DieAnotherDay(GEScenario):
 #             origin.__setitem__(1,origin.__getitem__(1) + 5.00)
 #             endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),searchDistance)
 #             returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)
-          
+
         return returned != None
     
     #------ Team Change Response Functions
