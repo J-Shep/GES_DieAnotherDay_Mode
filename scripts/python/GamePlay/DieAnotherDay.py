@@ -315,7 +315,7 @@ class DieAnotherDay(GEScenario):
         self.resurrections.playerHasBeenKilled(victim)
 
         #2. [If not killed by team mate]
-        if victimsTeam != killersTeam or victim == killer: #self.respondToTeamMateElimination()
+        if victimsTeam != killersTeam or victim == killer:
             #3.[Not Caused By Team Change Suicide]
             if(victim == killer and victim in self.playersExemptFromSucideEliminaton):
                 self.playersExemptFromSucideEliminaton.remove(victim)
@@ -438,16 +438,22 @@ class DieAnotherDay(GEScenario):
         resQueue = self.getSidesResQueue(team)
         
         for player in resQueue:
-            #self.drawEliminatedPlayerResQueueMessage(player,resQueue)
-            GEUtil.UpdateHudProgressBar(player,DieAnotherDay.resQueueMessageChannel,resQueue.index(player) + 1)
+            GEUtil.UpdateHudProgressBar(player,
+                                        DieAnotherDay.resQueueMessageChannel,
+                                        title="#GES_GP_DAD_RESURRECTION_QUEUE_POSITION\r" + str(resQueue.index(player) + 1))
 
     def drawEliminatedPlayerResQueueMessage(self,player,resQueue=None):
         if self.playerNotBot(player):
             if resQueue == None: 
                 resQueue = self.getSidesResQueue(player.GetTeamNumber())
             
-            GEUtil.InitHudProgressBar(player, DieAnotherDay.resQueueMessageChannel, title="#GES_GP_DAD_RESURRECTION_QUEUE_POSITION", flags=GEGlobal.HUDPB_SHOWVALUE, max_value=len(resQueue), x=-1, y=0.75, color=DieAnotherDay.RQPositionColour, curr_value=resQueue.index(player) + 1)    
- 
+            GEUtil.InitHudProgressBar(player,
+                                      DieAnotherDay.resQueueMessageChannel,
+                                      title="#GES_GP_DAD_RESURRECTION_QUEUE_POSITION\r" + str(resQueue.index(player) + 1),
+                                      flags=GEGlobal.HUDPB_TITLEONLY,
+                                      x=-1, y=0.75,
+                                      color=DieAnotherDay.RQPositionColour) 
+
     @staticmethod
     def playerNotBot(player):
         return player.__class__.__name__ != "CGEBotPlayer"
@@ -459,14 +465,13 @@ class DieAnotherDay(GEScenario):
         #Player Insertion:
         if self.playerNotBot(player):
             positionOfBotNearestRQueueFront = self.getPositionOfBotNearestQueueFront(teamsRQueue)
-             
+              
             if positionOfBotNearestRQueueFront == -1: teamsRQueue.append(player)
             else:
                 bot = teamsRQueue[positionOfBotNearestRQueueFront]
                 teamsRQueue.insert(positionOfBotNearestRQueueFront,player)
-                teamsRQueue.remove(bot) #TODO joe: nessesecary statement?
+                teamsRQueue.remove(bot) #TODO joe is this statement required?
                 teamsRQueue.append(bot)
-            
         #Bot Insertion:
         else: teamsRQueue.append(player)
         
