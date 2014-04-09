@@ -155,6 +155,7 @@ class DieAnotherDay(GEScenario):
     def OnPlayerConnect( self, player ):
         self.pltracker.SetValue(player,self.trSpawned,False)
         self.pltracker.SetValue(player,self.trEliminated,False)
+        GEUtil.PopupMessage(player,"#GES_GP_DAD_NAME","#GES_GP_DAD_FIRST_SPAWN_INSTRUCTIONS")
 
     def OnPlayerDisconnect( self, player ):
         team = player.GetTeamNumber()
@@ -211,7 +212,6 @@ class DieAnotherDay(GEScenario):
 
     def OnPlayerSpawn(self,player):
         self.pltracker.SetValue(player,self.trSpawned,True)
-        GEUtil.PopupMessage(player,"#GES_GP_DAD_NAME","#GES_GP_DAD_FIRST_SPAWN_INSTRUCTIONS")
         GEUtil.HudMessage(player, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
         
         #Resurrected player respawns:
@@ -230,7 +230,9 @@ class DieAnotherDay(GEScenario):
 
             #Should the spawned player be eliminated because of this mode's rules?
             if self.eliminatedPlayerCount > 0:
-                player.CommitSuicide(False,True)
+                GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","Alive players who join a team will be eliminated when a round has eliminated players.")
+                player.CommitSuicide(False,True) #TODO counts negatively for their score
+                player.IncrementScore(1) #Because killing them with CommitSuicide() above decrements their sore.
 
     def OnPlayerObserver(self,player):
         self.pltracker.SetValue(player,self.trSpawned,False)
@@ -465,7 +467,6 @@ class DieAnotherDay(GEScenario):
         #Player Insertion:
         if self.playerNotBot(player):
             positionOfBotNearestRQueueFront = self.getPositionOfBotNearestQueueFront(teamsRQueue)
-              
             if positionOfBotNearestRQueueFront == -1: teamsRQueue.append(player)
             else:
                 bot = teamsRQueue[positionOfBotNearestRQueueFront]
