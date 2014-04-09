@@ -465,7 +465,6 @@ class DieAnotherDay(GEScenario):
         #Player Insertion:
         if self.playerNotBot(player):
             positionOfBotNearestRQueueFront = self.getPositionOfBotNearestQueueFront(teamsRQueue)
-              
             if positionOfBotNearestRQueueFront == -1: teamsRQueue.append(player)
             else:
                 bot = teamsRQueue[positionOfBotNearestRQueueFront]
