@@ -230,7 +230,11 @@ class DieAnotherDay(GEScenario):
 
             #Should the spawned player be eliminated because of this mode's rules?
             if self.eliminatedPlayerCount > 0:
-                GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","Alive players who join a team will be eliminated when a round has eliminated players.")
+                if self.isEliminatedPlayer(player):
+                    GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","#GES_GP_DAD_PLAYER_CANT_CHANGE_TEAM")
+                else:
+                    GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","Players who join a team will be eliminated when they spawn when there's eliminated players.")
+
                 player.CommitSuicide(False,True) #TODO counts negatively for their score
                 player.IncrementScore(1) #Because killing them with CommitSuicide() above decrements their sore.
 
