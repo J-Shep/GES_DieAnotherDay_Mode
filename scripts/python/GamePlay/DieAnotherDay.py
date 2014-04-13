@@ -646,6 +646,7 @@ class DieAnotherDay(GEScenario):
         #----------- Callback functions:
         def OnRoundStart(self):
             self.delayedTotalUpdate()
+            GEUtil.ClientPrint(None, GEGlobal.HUD_PRINTNOTIFY, "This is a WIP alpha version:If you experience a bug please report it in this mode's forum topic.")
             
         def OnPlayerJoinedTeam(self,eliminated,oldTeam,newTeam):
             if newTeam == self.team:
