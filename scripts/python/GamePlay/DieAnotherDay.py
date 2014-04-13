@@ -258,7 +258,7 @@ class DieAnotherDay(GEScenario):
                 self.jSurvivorCountDisplay.OnPlayerBecomesSpectator(eliminatedBeforeObserver)           
 
     def observerTeamChangeCheck(self,timer,update_type,player):
-        if update_type == Timer.UPDATE_FINISH:
+        if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
             currentTeam = player.GetTeamNumber()
             oldTeam = self.pltracker.GetValue(player,"team")
             self.pltracker.SetValue(player,"team",currentTeam)
@@ -495,8 +495,9 @@ class DieAnotherDay(GEScenario):
             self.updateResQueuePlayerCount(team)
         
     def delayedResurrectionPBRemovalIfNoActiveResurrectionsAfterDelay(self,timer,update_type,player):
-        if update_type == Timer.UPDATE_FINISH:
-            if self.resurrections.getPlayersResurrectionCount(player) == 0: GEUtil.RemoveHudProgressBar(player,DieAnotherDay.resurrectionPBIndex)
+        if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
+            if self.resurrections.getPlayersResurrectionCount(player) == 0:
+                GEUtil.RemoveHudProgressBar(player,DieAnotherDay.resurrectionPBIndex)
         
     #5. RE Functions:
     #6. Functions Related To Resurrections:
@@ -632,7 +633,7 @@ class DieAnotherDay(GEScenario):
             GEUtil.UpdateHudProgressBar(None,self.index,self.survivorCount)
             
         def delayedTotalUpdateCB(self,timer,update_type):
-            if update_type == Timer.UPDATE_FINISH:
+            if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
                 self.playerCount = GEMPGameRules.GetNumActiveTeamPlayers(self.team)
                 self.survivorCount = GEMPGameRules.GetNumInRoundTeamPlayers(self.team)
                 self.delayedTotalUpdateInProgress = False
@@ -709,16 +710,17 @@ class DieAnotherDay(GEScenario):
         
         def monitorPlayersLRRTarget(self,timer,update_type):
             #1.Draw the first temporary beam to the RE
-            if update_type == Timer.UPDATE_START: self.drawLaser()
-            elif update_type == Timer.UPDATE_RUN:
-                #2. [Player's LRR beam is still hitting the friendly RE]
-                if self.resurrection.RE.isEntity(DieAnotherDay.getEntHitByLRRLaser(self.resurrection.user)):
-                    #3. Draw a new temporary beam to the RE
+            if not GEMPGameRules.IsIntermission():
+                if update_type == Timer.UPDATE_START:
                     self.drawLaser()
-                #Exception: Record that this monitor's target has been missed before its associated resurrection ended.
-                else: 
-                    self.DAD.resurrections.playerHasCeasedTargettingRE(self.resurrection)
-                    
+                elif update_type == Timer.UPDATE_RUN:
+                    #2. [Player's LRR beam is still hitting the friendly RE]
+                    if self.resurrection.RE.isEntity(DieAnotherDay.getEntHitByLRRLaser(self.resurrection.user)):
+                        #3. Draw a new temporary beam to the RE
+                        self.drawLaser()
+                    #Exception: Record that this monitor's target has been missed before its associated resurrection ended.
+                    else:
+                        self.DAD.resurrections.playerHasCeasedTargettingRE(self.resurrection)
             
         def drawLaser(self):
             GEUtil.CreateTempEnt(GEUtil.TempEnt.BEAM,origin=self.resurrection.user.GetEyePosition(),end=self.REContactVector,duration=self.drawnLaserDuration + 0.2,color=self.laserColour)                             
@@ -824,7 +826,8 @@ class DieAnotherDay(GEScenario):
             timer.start(delay)
             
         def deleteREAfterDelayCallback(self,timer,update_type,ID):
-            if update_type == Timer.UPDATE_FINISH: self.deleteRE(ID)
+            if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
+                self.deleteRE(ID)
             
         def deleteAll(self):
             for RE in self.REs.values(): RE.delete()
@@ -947,7 +950,8 @@ class DieAnotherDay(GEScenario):
                 timer.start(delay)
             
             def changRadarIconAfterDelayCB(self,timer,update_type,parameters):
-                if update_type == Timer.UPDATE_FINISH: self.changeRadarIcon(parameters["icon"],parameters["colour"])
+                if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
+                    self.changeRadarIcon(parameters["icon"],parameters["colour"])
                 
             def changeRadarIcon(self,newIcon,colour):
                 area = self.areasHandle.Get()
@@ -989,7 +993,8 @@ class DieAnotherDay(GEScenario):
                     return self.timer.state != Timer.STATE_STOP
                     
                 def TimerTick( self, timer, update_type ):
-                    if GEMPGameRules.IsIntermission() == False and update_type != Timer.UPDATE_STOP and update_type == Timer.UPDATE_RUN: self.DrawNewRing()
+                    if not GEMPGameRules.IsIntermission() and update_type != Timer.UPDATE_STOP and update_type == Timer.UPDATE_RUN:
+                        self.DrawNewRing()
                 
                 def DrawNewRing( self ):
                     GEUtil.CreateTempEnt(GEUtil.TempEnt.RING,origin=self.origin,framerate=15,duration=2,speed=10,width=0.33,amplitude=0.0,radius_start=0,radius_end=220,color=self.PULSE_COLOUR)
@@ -1174,8 +1179,9 @@ class DieAnotherDay(GEScenario):
         #Everything that happens in successful and interrupted resurrections is implemented/called in this timer function:
         def ResurrectionHandler( self, timer, update_type ):
             #Resurrection failure response:
-            if update_type != Timer.UPDATE_STOP:
-                if self.RE.disabled or self.RE.used: self.timer.Stop()
+            if update_type != Timer.UPDATE_STOP and not GEMPGameRules.IsIntermission():
+                if self.RE.disabled or self.RE.used:
+                    self.timer.Stop()
                 else:
                     if update_type == Timer.UPDATE_START:
                         #1. Start a LRR target monitor:
