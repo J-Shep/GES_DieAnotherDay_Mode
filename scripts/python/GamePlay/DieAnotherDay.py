@@ -347,12 +347,6 @@ class DieAnotherDay(GEScenario):
     def AfterPlayerEliminated(self,player,killer,weapon):
         #Record that the player has been eliminated and prevent them from respawning:
         moveTo = self.decideWhereREWillBeLocated(player,killer,weapon)
-
-        if killer != None:
-            self.pltracker.SetValue(player,"elimination_cause","killed")
-        else:
-            self.pltracker.SetValue(player,"elimination_cause","rules")
-        
         currentTeam = player.GetTeamNumber()
         self.REs.spawnNewResurrectionEntity(player,currentTeam,moveTo)
         self.addPlayerToResurrectionQueue(player,currentTeam)
