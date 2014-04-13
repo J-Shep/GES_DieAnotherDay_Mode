@@ -78,7 +78,6 @@ class DieAnotherDay(GEScenario):
         self.REs = DieAnotherDay.REDict(self)
         
         self.playersLRRTargetMonitor = {}
-        self.playersExemptFromSucideEliminaton = []
         
         self.waitingForPlayers = False
         
@@ -111,9 +110,7 @@ class DieAnotherDay(GEScenario):
         '''
         Collection References
         '''
-        
-        self.playersExemptFromSucideEliminaton = None
-        
+
         #Eliminated player collections
         self.mResurrectionQueue = None
         self.jResurrectionQueue = None
@@ -289,7 +286,6 @@ class DieAnotherDay(GEScenario):
         self.jSurvivorCountDisplay.hide()
 
         del self.resurrectedPlayers[:]
-        del self.playersExemptFromSucideEliminaton[:]
         del self.mResurrectionQueue[:]
         del self.jResurrectionQueue[:]
         
@@ -323,9 +319,8 @@ class DieAnotherDay(GEScenario):
 
         #2. [If not killed by team mate]
         if victimsTeam != killersTeam or victim == killer:
-            #3.[Not Caused By Team Change Suicide]
-            if(victim == killer and victim in self.playersExemptFromSucideEliminaton):
-                self.playersExemptFromSucideEliminaton.remove(victim)
+            #3.If caused by team change suicide:
+            if(victim == killer and weapon.__class__.__name__ == "CGEMPPlayer"):
                 return
             #4. Announce the elimination
             if killer != None:
@@ -409,8 +404,6 @@ class DieAnotherDay(GEScenario):
         GEMPGameRules.EndRound()
         
     def CanPlayerChangeTeam(self,player,oldTeam,newTeam):
-        if oldTeam != GEGlobal.TEAM_SPECTATOR and newTeam != GEGlobal.TEAM_SPECTATOR: #TODO joe: nessesary?
-            self.playersExemptFromSucideEliminaton.append(player)
         if self.isEliminatedPlayer(player) and (newTeam == GEGlobal.TEAM_MI6 or newTeam == GEGlobal.TEAM_JANUS):
             teamChangeCheckTimer = DieAnotherDay.ExtCallbackTimer(self.timerTracker,self.observerTeamChangeCheck,player)
             teamChangeCheckTimer.start(1)
