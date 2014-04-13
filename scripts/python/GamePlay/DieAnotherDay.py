@@ -337,7 +337,7 @@ class DieAnotherDay(GEScenario):
     def OnPlayerEliminated(self,player,killer=None,weapon=None):
         team = player.GetTeamNumber()
         #Eliminate the player
-        self.eliminatePlayer(player)
+        self.pltracker.SetValue(player,self.trEliminated,True)
         self.eliminatedPlayerCount += 1
         
         #If the round won't end because of this elimination:
@@ -492,11 +492,6 @@ class DieAnotherDay(GEScenario):
         if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
             if self.resurrections.getPlayersResurrectionCount(player) == 0:
                 GEUtil.RemoveHudProgressBar(player,DieAnotherDay.resurrectionPBIndex)
-        
-    #5. RE Functions:
-    #6. Functions Related To Resurrections:
-    def eliminatePlayer(self,player):
-        self.pltracker.SetValue(player,self.trEliminated,True)
     
     def beginREInteraction(self,player,REArea,proximityInteraction):
         resurrection = self.resurrections.getREResurrection(player,REArea.GetGroupName())
