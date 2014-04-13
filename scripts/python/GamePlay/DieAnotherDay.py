@@ -229,7 +229,7 @@ class DieAnotherDay(GEScenario):
             self.jSurvivorCountDisplay.OnPlayerJoinedTeam(False,oldTeam,newTeam)
 
             #Should the spawned player be eliminated because of this mode's rules?
-            if self.eliminatedPlayerCount > 0:
+            if not GEMPGameRules.IsIntermission() and self.eliminatedPlayerCount > 0:
                 if self.isEliminatedPlayer(player):
                     GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","#GES_GP_DAD_PLAYER_CANT_CHANGE_TEAM")
                 else:
@@ -275,13 +275,14 @@ class DieAnotherDay(GEScenario):
                 self.jSurvivorCountDisplay.OnPlayerJoinedTeam(True,oldTeam,currentTeam)
     
     def OnRoundEnd( self ):
+        self.eliminatedPlayerCount = 0
+
         #End and delete all timers first to prevent post round reset timer callback errors:
         self.resurrections.cancelResurrections()
         for timer in self.timerTracker.timers: timer.Stop()
         self.timerTracker.RemoveTimer(None)
         
         #Reset everything else:
-        self.eliminatedPlayerCount = 0
         self.REs.deleteAll()
         
         self.mSurvivorCountDisplay.hide()
@@ -1117,7 +1118,7 @@ class DieAnotherDay(GEScenario):
             self.timer = self.DAD.timerTracker.CreateTimer("ResurrectionTimer:" + self.getID())
             self.timer.SetUpdateCallback(self.ResurrectionHandler,1.0)
             self.timer.SetAgeRate(1.0,0)
-            self.LRRMonitorExsists = False
+            self.LRRMonitorExists = False
             
             #Resurrection Interrupt Flags
             self.hasUserDisconnected = False
@@ -1151,7 +1152,7 @@ class DieAnotherDay(GEScenario):
             #Stop LRR Target Monitor
             if self.DAD.playersLRRTargetMonitor.has_key(self.user): 
                 self.DAD.playersLRRTargetMonitor[self.user].delete()
-                self.LRRMonitorExsists = False
+                self.LRRMonitorExists = False
             
             #If nesscary, change the appearance of the RE to show its not being used:
             if self.DAD.REs.doesREExsist(self.RE.ID) and self.RE.used == False:
@@ -1189,7 +1190,7 @@ class DieAnotherDay(GEScenario):
                         if self.LRREnabled:
                             LRRTargetMonitor = DieAnotherDay.LRRTargetMonitor(self)
                             LRRTargetMonitor.start()
-                            self.LRRMonitorExsists = True
+                            self.LRRMonitorExists = True
                         
                         self.RE.userCount += 1
                         if self.RE.userCount == 1:
@@ -1214,15 +1215,15 @@ class DieAnotherDay(GEScenario):
                         #If it hasn't failed:
                         else:
                             #Enable/Disable a LRR target monitor if nesscary:
-                            if self.LRREnabled and self.LRRMonitorExsists == False:
+                            if self.LRREnabled and self.LRRMonitorExists == False:
                                 #Start a LRR target monitor:
                                 LRRTargetMonitor = DieAnotherDay.LRRTargetMonitor(self)
                                 LRRTargetMonitor.start()
-                                self.LRRMonitorExsists = True
-                            elif self.LRREnabled == False and self.LRRMonitorExsists:
+                                self.LRRMonitorExists = True
+                            elif self.LRREnabled == False and self.LRRMonitorExists:
                                 #Stop LRR Target Monitor
                                 self.DAD.playersLRRTargetMonitor[self.user].delete()
-                                self.LRRMonitorExsists = False
+                                self.LRRMonitorExists = False
                             
                             if self.DAD.resurrections.isPlayersMostRecentResurrection(self.user,self):
                                     #5. Update the resurrection progress bar:
@@ -1233,7 +1234,7 @@ class DieAnotherDay(GEScenario):
                         self.DAD.REs.flagREAsUsed(self.RE.ID)
                         self.DAD.resurrections.cancelREResurrections(self.RE.ID,self.ID)
                         #7.Stop target monitor
-                        if self.LRRMonitorExsists: self.DAD.playersLRRTargetMonitor[self.user].delete()
+                        if self.LRRMonitorExists: self.DAD.playersLRRTargetMonitor[self.user].delete()
                         #8.Disable the RE and make it Invisible
                         self.RE.clearObjective()
                         self.RE.makeInvisible()
