@@ -29,9 +29,7 @@ class DieAnotherDay(GEScenario):
     
     trEliminated = "eliminated"
     trSpawned = "spawned"
-    
-    eliminatedPlayerHUDUpdateDelay = 1.0
-    
+
     maxDistanceBetweenGroundAndJumpingPlayer = 46.00 #It's actually less than this & > 45.00. TODO Joe
     maxDistanceBetweenGroundAndPlayerOrigin = 8.04
     
@@ -48,19 +46,8 @@ class DieAnotherDay(GEScenario):
     RQPositionColour = GEUtil.Color(255,255,0,255)
     
     #Progress Bar Indexs
-    mSCountPBIndex = 0
-    jSCountPBIndex = 1
     resurrectionPBIndex = 2
-    
-    survivorCountPBY = 0.01
-    spectatorSCountPBY = 0.12
     resBarY = 0.765
-    
-    mSurvivorCountPBX = 0.30
-    survivorCountSeperationDistance = 0.20
-    
-    sCountChannel = 1
-    specSCountChannel = 2
     resQueueMessageChannel = 3
 
     def __init__( self ):
@@ -73,53 +60,34 @@ class DieAnotherDay(GEScenario):
         self.timerTracker = TimerTracker(self)
         self.pltracker = GEPlayerTracker( self )
         self.tokenManager = GEMPGameRules.GetTokenMgr()
+        self.HUDSCounts = DieAnotherDay.HUDSurvivorCounts()
         
         self.resurrections = DieAnotherDay.ResurrectionDict(self)
         self.REs = DieAnotherDay.REDict(self)
-        
+
         self.playersLRRTargetMonitor = {}
-        
+
         self.waitingForPlayers = False
-        
+
         self.mResurrectionQueue = []
         self.jResurrectionQueue = []
-
         self.resurrectedPlayers = []
-                
-        self.mSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_MI6)
-        self.jSurvivorCountDisplay = DieAnotherDay.SurvivorCountDisplay(self,GEGlobal.TEAM_JANUS)
-        
+
         self.eliminatedPlayerCount = 0
         
     def Cleanup( self ):
         super( DieAnotherDay, self ).Cleanup()
-        
         self.resurrections.cleanup()
         self.REs.cleanup()
         self.resurrections = None
         self.REs = None
-        
-        '''
-        Object References
-        '''
         self.pltracker = None
         self.timerTracker = None
         self.tokenManager = None
         self.radar = None
-                
-        '''
-        Collection References
-        '''
-
-        #Eliminated player collections
         self.mResurrectionQueue = None
         self.jResurrectionQueue = None
-        
-        self.resurrectedBots = None
-        
-        #Collections related to resurrection RE entities
         self.playersLRRTargetMonitor = None
-        
         self.resurrectedPlayers = None
     
     #1. Callback functions:
@@ -160,10 +128,6 @@ class DieAnotherDay(GEScenario):
         if team != GEGlobal.TEAM_SPECTATOR:
             self.resurrections.playerHasDisconnected(player)
             wasEliminated = self.isEliminatedPlayer(player)
-
-            #Update the displayed survivor count for their old team:
-            if team == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnPlayerLeavesTeam(wasEliminated)
-            else: self.jSurvivorCountDisplay.OnPlayerLeavesTeam(wasEliminated)
             
             if wasEliminated:
                 self.OnEliminatedPlayerLeavesTeam(player,team)
@@ -220,10 +184,6 @@ class DieAnotherDay(GEScenario):
             newTeam = player.GetTeamNumber()
             oldTeam = self.pltracker.GetValue(player,"team",-1)
             self.pltracker.SetValue(player,"team",newTeam)
-            
-            #Update survivor counts:
-            self.mSurvivorCountDisplay.OnPlayerJoinedTeam(False,oldTeam,newTeam)
-            self.jSurvivorCountDisplay.OnPlayerJoinedTeam(False,oldTeam,newTeam)
 
             #Should the spawned player be eliminated because of this mode's rules?
             if not GEMPGameRules.IsIntermission() and self.eliminatedPlayerCount > 0:
@@ -247,12 +207,6 @@ class DieAnotherDay(GEScenario):
             
             if eliminatedBeforeObserver: 
                 self.OnEliminatedPlayerLeavesTeam(player,oldTeam)
-            
-            #Update survivor counts:
-            if oldTeam == GEGlobal.TEAM_MI6:
-                self.mSurvivorCountDisplay.OnPlayerBecomesSpectator(eliminatedBeforeObserver)
-            elif oldTeam == GEGlobal.TEAM_JANUS:
-                self.jSurvivorCountDisplay.OnPlayerBecomesSpectator(eliminatedBeforeObserver)           
 
     def observerTeamChangeCheck(self,timer,update_type,player):
         if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
@@ -281,9 +235,6 @@ class DieAnotherDay(GEScenario):
         
         #Reset everything else:
         self.REs.deleteAll()
-        
-        self.mSurvivorCountDisplay.hide()
-        self.jSurvivorCountDisplay.hide()
 
         del self.resurrectedPlayers[:]
         del self.mResurrectionQueue[:]
@@ -292,6 +243,8 @@ class DieAnotherDay(GEScenario):
         self.radar.DropAllContacts()
     
     def OnRoundBegin( self ):
+        self.HUDSCounts.show()
+
         if not self.waitingForPlayers:
             for i in range( 32 ):
                 if not GEPlayer.IsValidPlayerIndex( i ):
@@ -300,9 +253,6 @@ class DieAnotherDay(GEScenario):
     
             GEMPGameRules.ResetAllPlayerDeaths()
             GEMPGameRules.ResetAllPlayersScores()
-        
-        self.mSurvivorCountDisplay.OnRoundStart()
-        self.jSurvivorCountDisplay.OnRoundStart()
         
         GEUtil.HudMessage(None, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
 
@@ -329,10 +279,6 @@ class DieAnotherDay(GEScenario):
                 else: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_ELIMINATED",victim.GetPlayerName())
             #5. Eliminate the player
             self.OnPlayerEliminated(victim,killer,weapon)
-            
-            #6. Update the displayed survivor count for the victim's team:
-            if victimsTeam == GEGlobal.TEAM_MI6: self.mSurvivorCountDisplay.OnTeamMemberEliminated()
-            else: self.jSurvivorCountDisplay.OnTeamMemberEliminated()
     
     def OnPlayerEliminated(self,player,killer=None,weapon=None):
         team = player.GetTeamNumber()
@@ -359,6 +305,9 @@ class DieAnotherDay(GEScenario):
         self.updateResQueuePlayerCount(team)
 
     def OnThink(self):
+        if not GEMPGameRules.IsIntermission():
+            self.HUDSCounts.refresh(True)
+
         if GEMPGameRules.GetNumActivePlayers() < 2:
             self.waitingForPlayers = True
             return
@@ -550,111 +499,127 @@ class DieAnotherDay(GEScenario):
 #             returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)
 
         return returned != None
-    
-    #------ Team Change Response Functions
+
     def isEliminatedPlayer(self,player):
         return self.pltracker.GetValue(player,self.trEliminated)
-    
-    def playerWantsToBecomeSpectator(self,player,oldTeam):
-        return
 
     #------------------------------
     
-    class SurvivorCountDisplay:
-        def __init__(self,DADP,teamP):
-            self.DAD = DADP
-            self.team = teamP
-            self.title = None
-            self.x = None
-            self.y = DieAnotherDay.survivorCountPBY
-            self.index = None
-            self.colour = self.DAD.getSidesColour(self.team)
-            self.shown = False
-            self.playerCount = 0
-            self.survivorCount = 0
-            self.delayedTotalUpdateInProgress = False
+    '''Displays this HUD message: MI6:survivorCount/playerCount Janus:survivorCount/playerCount'''
+    class HUDSurvivorCounts:
+        ONTHINK_REFRESH_DELAY = 15 #= number of calls to be ignored, this delay is meant to be used in OnThink()
+        mSCountPBIndex = 0
+        jSCountPBIndex = 1
+
+        def __init__(self, x=0.30, y=0.01):
+            self.x = x
+            self.y = y
+            self.refreshDelay = self.ONTHINK_REFRESH_DELAY
+            self.mPlayerCount = 0
+            self.mSurvivorCount = 0
+            self.jPlayerCount = 0
+            self.jSurvivorCount = 0
+            self.displayed = False
+
+        ''''Exists because GetNumActiveTeamPlayers2() doesn't count players in observer mode who have stopped being spectators
+
+        TODO Delete when fixed and update calls.
+        '''
+        def GetNumActiveTeamPlayers2(self, team):
+            players = []
+            for i in range(32):
+                if GEPlayer.IsValidPlayerIndex(i):
+                    player = GEPlayer.GetMPPlayer(i)
+                    if player.GetTeamNumber() == team:
+                        players.append(player)
+
+            return len(players)
             
-            if self.team == GEGlobal.TEAM_MI6:
-                self.title = "MI6:"
-                self.index = DieAnotherDay.mSCountPBIndex
-                self.x = DieAnotherDay.mSurvivorCountPBX
-            else:
-                self.title = "Janus:"
-                self.index = DieAnotherDay.jSCountPBIndex
-                self.x = DieAnotherDay.mSurvivorCountPBX + DieAnotherDay.survivorCountSeperationDistance
-        
-        def allPlayersAlive(self):
-            return self.playerCount == self.survivorCount
-        
         def show(self):
-            GEUtil.InitHudProgressBar(None,self.index,self.title,GEGlobal.HUDPB_SHOWVALUE,self.playerCount,self.x,self.y,120,60,self.colour,self.survivorCount)
-            self.shown = True
-        
+            self.refresh()
+            self.draw()
+            self.displayed = True
+
         def hide(self):
-            GEUtil.RemoveHudProgressBar(None,self.index)
-            self.shown = False
-            
-        def totalUpdate(self):
-            self.hide()
-            self.show()
-            
-        def playerCountHasIncreased(self):
-            newPlayerCount = GEMPGameRules.GetNumInRoundTeamPlayers(self.team)
-            return self.playerCount < newPlayerCount
-        
-        def playerCountHasDecreased(self):
-            newPlayerCount = GEMPGameRules.GetNumInRoundTeamPlayers(self.team)
-            return self.playerCount > newPlayerCount
-            
-        def playerCountUpdate(self):
-            newPlayerCount = GEMPGameRules.GetNumInRoundTeamPlayers(self.team)
-            if self.playerCount != newPlayerCount:
-                GEUtil.InitHudProgressBar(None,self.index,self.title,GEGlobal.HUDPB_SHOWVALUE,self.playerCount,self.x,self.y,120,60,self.colour,self.survivorCount)
-                self.shown = True
-            
-        def updateSurvivorCount(self):
-            GEUtil.UpdateHudProgressBar(None,self.index,self.survivorCount)
-            
-        def delayedTotalUpdateCB(self,timer,update_type):
-            if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
-                self.playerCount = GEMPGameRules.GetNumActiveTeamPlayers(self.team)
-                self.survivorCount = GEMPGameRules.GetNumInRoundTeamPlayers(self.team)
-                self.delayedTotalUpdateInProgress = False
-                self.show()    
-        
-        def delayedTotalUpdate(self):
-            #if self.delayedTotalUpdateInProgress == False: 
-            self.delayedTotalUpdateInProgress = True
-            self.DAD.timerTracker.OneShotTimer(2.0,self.delayedTotalUpdateCB)
-        #----------- Callback functions:
-        def OnRoundStart(self):
-            self.delayedTotalUpdate()
-            GEUtil.ClientPrint(None, GEGlobal.HUD_PRINTNOTIFY, "This is a WIP alpha version:If you experience a bug please report it in this mode's forum topic.")
-            
-        def OnPlayerJoinedTeam(self,eliminated,oldTeam,newTeam):
-            if newTeam == self.team:
-                self.playerCount += 1
-                if not eliminated: self.survivorCount += 1
-                self.totalUpdate()
-            elif oldTeam == self.team:
-                self.OnPlayerLeavesTeam(eliminated)
-        
-        def OnPlayerBecomesSpectator(self,eliminatedBeforeSpectator):
-            self.OnPlayerLeavesTeam(eliminatedBeforeSpectator)
-        
-        def OnPlayerLeavesTeam(self,wasEliminated):
-            self.playerCount -= 1
-            if not wasEliminated: self.survivorCount -= 1
-            self.totalUpdate()
-        
-        def OnTeamMemberEliminated(self):
-            self.survivorCount -= 1
-            self.updateSurvivorCount()
-            
-        def OnTeamMemberResurrected(self):
-            self.survivorCount += 1
-            self.updateSurvivorCount()
-    
+            GEUtil.RemoveHudProgressBar(None,self.mSCountPBIndex)
+            GEUtil.RemoveHudProgressBar(None,self.jSCountPBIndex)
+            self.displayed = False
+
+        '''
+        This will update the displayed information if this information needs to be updated.
+        '''
+        def refresh(self,useOnThinkDelay=False):
+            if useOnThinkDelay:
+                if self.refreshDelay != 0:
+                    self.refreshDelay -= 1
+                    return
+                else:
+                    self.refreshDelay = self.ONTHINK_REFRESH_DELAY
+
+            GEUtil.DevWarning("refresh() ----- \n") #TODO joe
+            #Get the latest team info:
+            currentMPlayerCount = self.GetNumActiveTeamPlayers2(GEGlobal.TEAM_MI6) #TODO replace when fixed
+            currentJPlayerCount = self.GetNumActiveTeamPlayers2(GEGlobal.TEAM_JANUS) #TODO replace when fixed
+            currentMSurvivorCount = GEMPGameRules.GetNumInRoundTeamPlayers(GEGlobal.TEAM_MI6)
+            currentJSurvivorCount = GEMPGameRules.GetNumInRoundTeamPlayers(GEGlobal.TEAM_JANUS)
+
+            #Update stored info:
+            mPCountNeedsUpdate = False
+            jPCountNeedsUpdate = False
+            mSCountNeedsUpdate = False
+            jSCountNeedsUpdate = False
+            if self.mPlayerCount != currentMPlayerCount:
+                self.mPlayerCount = currentMPlayerCount
+                mPCountNeedsUpdate = True
+            if self.jPlayerCount != currentJPlayerCount:
+                self.jPlayerCount = currentJPlayerCount
+                jPCountNeedsUpdate = True
+            if self.mSurvivorCount != currentMSurvivorCount:
+                self.mSurvivorCount = currentMSurvivorCount
+                mSCountNeedsUpdate = True
+            if self.jSurvivorCount != currentJSurvivorCount:
+                self.jSurvivorCount = currentJSurvivorCount
+                jSCountNeedsUpdate = True
+
+            #Update displayed info:
+            if self.displayed:
+                if mPCountNeedsUpdate: self.draw(GEGlobal.TEAM_MI6)
+                elif mSCountNeedsUpdate: self.updateDisplayedSurvivorCount(GEGlobal.TEAM_MI6)
+                if jPCountNeedsUpdate: self.draw(GEGlobal.TEAM_JANUS)
+                elif jSCountNeedsUpdate: self.updateDisplayedSurvivorCount(GEGlobal.TEAM_JANUS)
+
+        def updateDisplayedSurvivorCount(self, team=None):
+            if team == None or GEGlobal.TEAM_MI6:
+                GEUtil.UpdateHudProgressBar(None, self.mSCountPBIndex, self.mSurvivorCount)
+            if team == None or GEGlobal.TEAM_JANUS:
+                GEUtil.UpdateHudProgressBar(None, self.jSCountPBIndex, self.jSurvivorCount)
+
+        def draw(self, team=None):
+            if team == None or GEGlobal.TEAM_MI6:
+                GEUtil.InitHudProgressBar(None,
+                                          self.mSCountPBIndex,
+                                          "MI6:",
+                                          GEGlobal.HUDPB_SHOWVALUE,
+                                          self.mPlayerCount,
+                                          self.x,
+                                          self.y,
+                                          120,
+                                          60,
+                                          GEUtil.CColor(0,150,255,255),
+                                          self.mSurvivorCount)
+            if team == None or GEGlobal.TEAM_JANUS:
+                GEUtil.InitHudProgressBar(None,
+                                          self.jSCountPBIndex,
+                                          "Janus:",
+                                          GEGlobal.HUDPB_SHOWVALUE,
+                                          self.jPlayerCount,
+                                          self.x + 0.20,
+                                          self.y,
+                                          120,
+                                          60,
+                                          GEUtil.Color(255,0,0,255),
+                                          self.jSurvivorCount)
+
     '''
         This class is responsible for detecting when a player has stopped aiming a LRR beam at a RE they are using.
         
@@ -1245,18 +1210,15 @@ class DieAnotherDay(GEScenario):
                             
                             #17.Remove the resurrection queue position message from the resurrected player's screen.
                             GEUtil.RemoveHudProgressBar(resurrectedPlayer, DieAnotherDay.resQueueMessageChannel)
-                            #18. Update the displayed survivor count for the resurrected player's team
-                            if self.team == GEGlobal.TEAM_MI6: self.DAD.mSurvivorCountDisplay.OnTeamMemberResurrected()
-                            else: self.DAD.jSurvivorCountDisplay.OnTeamMemberResurrected()
-                            #19.Announce the resurrection.
+                            #18.Announce the resurrection.
                             playersName = resurrectedPlayer.GetPlayerName()
                             GEUtil.EmitGameplayEvent("DAD_Resurrection","%s" % playersName,"%i" % self.team,"%s" % self.user.GetPlayerName())
                             if self.team == GEGlobal.TEAM_MI6: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_MI6_PLAYER_RESURRECTED",playersName)
                             else:GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_RESURRECTED",playersName)
-                            #20.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
+                            #19.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
                             self.RE.changeRadarIconAfterDelay("sprites/hud/radar/run",self.DAD.getSidesRadarColour(self.team,False),3.0)
-                            #21.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
+                            #20.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
                             self.DAD.REs.deleteREAfterDelay(self.RE.ID,10)
                         else: self.DAD.REs.deleteRE(self.RE.ID)
-                        #22. Delete this resurrection object
+                        #21. Delete this resurrection object
                         self.DAD.resurrections.delete(self)
