@@ -219,12 +219,8 @@ class DieAnotherDay(GEScenario):
             if currentTeam != oldTeam:
                 if oldTeam == GEGlobal.TEAM_MI6 or oldTeam == GEGlobal.TEAM_JANUS:
                     self.OnEliminatedPlayerLeavesTeam(player,oldTeam)
-                
-                self.AfterPlayerEliminated(player,None,None)
-                
-                #Update survivor counts:
-                self.mSurvivorCountDisplay.OnPlayerJoinedTeam(True,oldTeam,currentTeam)
-                self.jSurvivorCountDisplay.OnPlayerJoinedTeam(True,oldTeam,currentTeam)
+
+                self.OnTeamHasNewEliminatedMember(player, None, None)
     
     def OnRoundEnd( self ):
         self.eliminatedPlayerCount = 0
@@ -289,10 +285,9 @@ class DieAnotherDay(GEScenario):
         
         #If the round won't end because of this elimination:
         if GEMPGameRules.GetNumInRoundTeamPlayers(team) - 1 > 0:
-            self.AfterPlayerEliminated(player,killer,weapon)
-            
-    def AfterPlayerEliminated(self,player,killer,weapon):
-        #Record that the player has been eliminated and prevent them from respawning:
+            self.OnTeamHasNewEliminatedMember(victim,killer,weapon)
+
+    def OnTeamHasNewEliminatedMember(self,player,killer,weapon):
         moveTo = self.decideWhereREWillBeLocated(player,killer,weapon)
         currentTeam = player.GetTeamNumber()
         self.REs.spawnNewResurrectionEntity(player,currentTeam,moveTo)
