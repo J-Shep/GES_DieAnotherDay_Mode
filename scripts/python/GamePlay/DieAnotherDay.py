@@ -131,6 +131,7 @@ class DieAnotherDay(GEScenario):
             
             if wasEliminated:
                 self.OnEliminatedPlayerLeavesTeam(player,team)
+                self.eliminatedPlayerCount -= 1
         
         if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
     
@@ -297,7 +298,7 @@ class DieAnotherDay(GEScenario):
         self.REs.spawnNewResurrectionEntity(player,currentTeam,moveTo)
         self.addPlayerToResurrectionQueue(player,currentTeam)
         self.drawEliminatedPlayerResQueueMessage(player)
-        
+
     def OnEliminatedPlayerLeavesTeam(self,player,team):        
         self.removePlayerFromTeamsRQueue(player,team)
         self.resurrections.deleteNotInUseRE(team)
@@ -400,7 +401,7 @@ class DieAnotherDay(GEScenario):
     @staticmethod
     def playerNotBot(player):
         return player.__class__.__name__ != "CGEBotPlayer"
-    
+
     def addPlayerToResurrectionQueue(self,player,team):
         teamsRQueue = None
         if team == GEGlobal.TEAM_MI6: teamsRQueue = self.mResurrectionQueue
@@ -416,12 +417,12 @@ class DieAnotherDay(GEScenario):
                 teamsRQueue.append(bot)
         #Bot Insertion:
         else: teamsRQueue.append(player)
-        
+
     def getPositionOfBotNearestQueueFront(self,rQueue):
         for player in rQueue: 
             if self.playerNotBot(player) == False: return rQueue.index(player)
         return -1
-        
+
     def removePlayerFromTeamsRQueue(self,player,team):
         rQueue = None
         if team == GEGlobal.TEAM_MI6: rQueue = self.mResurrectionQueue
@@ -430,12 +431,12 @@ class DieAnotherDay(GEScenario):
         if player in rQueue: 
             rQueue.remove(player)
             self.updateResQueuePlayerCount(team)
-        
+
     def delayedResurrectionPBRemovalIfNoActiveResurrectionsAfterDelay(self,timer,update_type,player):
         if update_type == Timer.UPDATE_FINISH and not GEMPGameRules.IsIntermission():
             if self.resurrections.getPlayersResurrectionCount(player) == 0:
                 GEUtil.RemoveHudProgressBar(player,DieAnotherDay.resurrectionPBIndex)
-    
+
     def beginREInteraction(self,player,REArea,proximityInteraction):
         resurrection = self.resurrections.getREResurrection(player,REArea.GetGroupName())
         RE = self.REs.getRE(REArea.GetGroupName())
@@ -443,10 +444,10 @@ class DieAnotherDay(GEScenario):
         else:
             if proximityInteraction: resurrection.proximityEnabled = True
             else: resurrection.LRREnabled = True
-    
+
     def resurrectPlayerFromTeamIfTeamHasEliminatedPlayers(self,resurrector):
         areasTeam = resurrector.GetTeamNumber()
-        
+
         #Choose player to be resurrected
         resurrectedPlayer = None
         if areasTeam == GEGlobal.TEAM_MI6 and len(self.mResurrectionQueue) != 0: resurrectedPlayer = self.mResurrectionQueue.pop(0)
@@ -556,7 +557,6 @@ class DieAnotherDay(GEScenario):
                 else:
                     self.refreshDelay = self.ONTHINK_REFRESH_DELAY
 
-            GEUtil.DevWarning("refresh() ----- \n") #TODO joe
             #Get the latest team info:
             currentMPlayerCount = self.GetNumActiveTeamPlayers2(GEGlobal.TEAM_MI6) #TODO replace when fixed
             currentJPlayerCount = self.GetNumActiveTeamPlayers2(GEGlobal.TEAM_JANUS) #TODO replace when fixed
