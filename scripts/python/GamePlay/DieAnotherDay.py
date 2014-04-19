@@ -136,7 +136,7 @@ class DieAnotherDay(GEScenario):
         if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
     
     def OnPlayerSay(self,player,text):
-        if text == "!voodoo":
+        if text == "!voodoo" or "!gesrocks":
             if not self.isEliminatedPlayer(player) and player.GetTeamNumber() != GEGlobal.TEAM_SPECTATOR:
                 if not self.playersLRRTargetMonitor.has_key(player):
                     hitEntity = self.getEntHitByLRRLaser(player)
@@ -146,7 +146,7 @@ class DieAnotherDay(GEScenario):
                                 self.beginREInteraction(player,hitEntity,False)
 
             return True
-        
+
     def OnCaptureAreaSpawned( self, area ):
         areasTeam = area.GetTeamNumber()
         
@@ -185,16 +185,6 @@ class DieAnotherDay(GEScenario):
             newTeam = player.GetTeamNumber()
             oldTeam = self.pltracker.GetValue(player,"team",-1)
             self.pltracker.SetValue(player,"team",newTeam)
-
-            #Should the spawned player be eliminated because of this mode's rules?
-            if not GEMPGameRules.IsIntermission() and self.eliminatedPlayerCount > 0:
-                if self.isEliminatedPlayer(player):
-                    GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","#GES_GP_DAD_PLAYER_CANT_CHANGE_TEAM")
-                else:
-                    GEUtil.PopupMessage(player,"#GES_GP_DAD_YOU_CANT_SPAWN_YET","Players who join a team will be eliminated when they spawn when there's eliminated players.")
-
-                player.CommitSuicide(False,True) #TODO counts negatively for their score
-                player.IncrementScore(1) #Because killing them with CommitSuicide() above decrements their sore.
 
     def OnPlayerObserver(self,player):
         self.pltracker.SetValue(player,self.trSpawned,False)
@@ -253,36 +243,56 @@ class DieAnotherDay(GEScenario):
         
         GEUtil.HudMessage(None, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
 
-    #TODO Allow players to eliminate their team mates because otherwise they could help their team mates by respawning them:
+    def CanPlayerRespawn(self,player):
+        notIntermission = not GEMPGameRules.IsIntermission()
+        if not player in self.resurrectedPlayers:
+            if self.isEliminatedPlayer(player) and notIntermission:
+                return False
+            elif self.eliminatedPlayerCount > 0 and notIntermission:
+                self.OnPlayerEliminated(player)
+                return False
+
+        player.SetScoreBoardColor(GEGlobal.SB_COLOR_NORMAL)
+        return True
+
     def OnPlayerKilled( self, victim, killer, weapon ):
         self.pltracker.SetValue(victim,self.trSpawned,False)
         super( DieAnotherDay, self ).OnPlayerKilled( victim, killer, weapon )
-        victimsTeam = victim.GetTeamNumber()
+
         killersTeam = None
-        if killer != None: killersTeam = killer.GetTeamNumber()
-        
-        #1.If the killed player was resurrecting team mates, cancel their resurrections
+        if killer: killersTeam = killer.GetTeamNumber()
+
+        #Don't allow team mate elimination greifing:
+        if(victim.GetTeamNumber() != killer.GetTeamNumber() or victim == killer):
+            #If the player wasn't forced to commit suicide by changing their team:
+            if(not type(weapon) == GEPlayer.CGEMPPlayer):
+                self.OnPlayerEliminated(victim,killer,weapon)
+
+    '''
+    This function is responsible for eliminating players and for responding to this event.
+    '''
+    def OnPlayerEliminated(self,victim,killer=None,weapon=None):
+        team = victim.GetTeamNumber()
+        #1.Eliminate the player:
+        self.pltracker.SetValue(victim,self.trEliminated,True)
+        self.eliminatedPlayerCount += 1
+        #2. Cancel their resurrections:
         self.resurrections.playerHasBeenKilled(victim)
 
-        #2. [If not killed by team mate]
-        if victimsTeam != killersTeam or victim == killer:
-            #3.If caused by team change suicide:
-            if(victim == killer and weapon.__class__.__name__ == "CGEMPPlayer"):
-                return
-            #4. Announce the elimination
-            if killer != None:
-                GEUtil.EmitGameplayEvent( "DieAnotherDay_elimination","%s" % victim.GetPlayerName(),"%i" % victim.GetTeamNumber(),"%s" % killer.GetPlayerName())
-                if victim.GetTeamNumber() == GEGlobal.TEAM_MI6:GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_MI6_PLAYER_ELIMINATED",victim.GetPlayerName())
-                else: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_ELIMINATED",victim.GetPlayerName())
-            #5. Eliminate the player
-            self.OnPlayerEliminated(victim,killer,weapon)
-    
-    def OnPlayerEliminated(self,player,killer=None,weapon=None):
-        team = player.GetTeamNumber()
-        #Eliminate the player
-        self.pltracker.SetValue(player,self.trEliminated,True)
-        self.eliminatedPlayerCount += 1
-        
+        #3. Announce the elimination:
+        if killer != None:
+            GEUtil.EmitGameplayEvent("DieAnotherDay_elimination",
+                                     "%s" % victim.GetPlayerName(),
+                                     "%i" % victim.GetTeamNumber(),
+                                     "%s" % killer.GetPlayerName())
+            if team == GEGlobal.TEAM_MI6:
+                GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK, "#GES_GP_DAD_MI6_PLAYER_ELIMINATED", victim.GetPlayerName())
+            else:
+                GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK, "#GES_GP_DAD_JANUS_PLAYER_ELIMINATED", victim.GetPlayerName())
+
+        #4. Change their scoreboard colour:
+        victim.SetScoreBoardColor(GEGlobal.SB_COLOR_ELIMINATED)
+
         #If the round won't end because of this elimination:
         if GEMPGameRules.GetNumInRoundTeamPlayers(team) - 1 > 0:
             self.OnTeamHasNewEliminatedMember(victim,killer,weapon)
@@ -454,15 +464,7 @@ class DieAnotherDay(GEScenario):
             self.updateResQueuePlayerCount(areasTeam)
             return resurrectedPlayer
         return None
-        
-    def CanPlayerRespawn(self,player):
-        if self.isEliminatedPlayer(player):
-            player.SetScoreBoardColor(GEGlobal.SB_COLOR_ELIMINATED)
-            return False
-        else:
-            player.SetScoreBoardColor( GEGlobal.SB_COLOR_NORMAL )
-            return True
-    
+
     def decideWhereREWillBeLocated(self,victim,killer,weapon):
         whenSpawnedMoveRETo = None
         
@@ -669,7 +671,7 @@ class DieAnotherDay(GEScenario):
         def drawLaser(self):
             GEUtil.CreateTempEnt(GEUtil.TempEnt.BEAM,origin=self.resurrection.user.GetEyePosition(),end=self.REContactVector,duration=self.drawnLaserDuration + 0.2,color=self.laserColour)                             
 
-    class ExtCallbackTimer():
+    class ExtCallbackTimer:
             instanceID = 0
             def __init__(self,timerTrackerP,extCallbackP,runParameterP,callbackRate=1.0,ageRate=1.0):
                 self.extCallback = extCallbackP
