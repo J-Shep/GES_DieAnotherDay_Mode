@@ -263,9 +263,9 @@ class DieAnotherDay(GEScenario):
         if killer: killersTeam = killer.GetTeamNumber()
 
         #Don't allow team mate elimination greifing:
-        if(victim.GetTeamNumber() != killer.GetTeamNumber() or victim == killer):
+        if(victim.GetTeamNumber() != killersTeam or victim == killer):
             #If the player wasn't forced to commit suicide by changing their team:
-            if(not type(weapon) == GEPlayer.CGEMPPlayer):
+            if(not self.pltracker.GetValue(victim,"CanPlayerChangeTeam()_called",False)):
                 self.OnPlayerEliminated(victim,killer,weapon)
 
     '''
@@ -353,6 +353,13 @@ class DieAnotherDay(GEScenario):
         GEMPGameRules.EndRound()
         
     def CanPlayerChangeTeam(self,player,oldTeam,newTeam):
+        if oldTeam != GEGlobal.TEAM_SPECTATOR and newTeam != GEGlobal.TEAM_SPECTATOR and not self.isEliminatedPlayer(player):
+            self.pltracker.SetValue(player,"CanPlayerChangeTeam()_called",True)
+            def callback(timer,update_type):
+                if update_type == Timer.UPDATE_FINISH:
+                    self.pltracker.SetValue(player,"CanPlayerChangeTeam()_called",False)
+            self.timerTracker.OneShotTimer(0.5,callback)
+
         if self.isEliminatedPlayer(player) and (newTeam == GEGlobal.TEAM_MI6 or newTeam == GEGlobal.TEAM_JANUS):
             teamChangeCheckTimer = DieAnotherDay.ExtCallbackTimer(self.timerTracker,self.observerTeamChangeCheck,player)
             teamChangeCheckTimer.start(1)
