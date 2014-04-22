@@ -1194,7 +1194,7 @@ class DieAnotherDay(GEScenario):
                         #8.Disable the RE and make it Invisible
                         self.RE.clearObjective()
                         self.RE.makeInvisible()
-                        #9.Give the invisble RE an objective icon for the enemy team, to show them where a player was resurrected.
+                        #9.Give the invisible RE an objective icon for the enemy team, to show them where a player was resurrected.
                         enemyTeam = GEGlobal.TEAM_MI6
                         if self.team == GEGlobal.TEAM_MI6: enemyTeam = GEGlobal.TEAM_JANUS
                         self.RE.clearObjective()
@@ -1203,7 +1203,7 @@ class DieAnotherDay(GEScenario):
                         self.DAD.timerTracker.RemoveTimer(self.timer.GetName())
                         #11.Stop pulsating RE Rings
                         self.RE.stopPulsating()
-                        #12.Change REs Radar Icon to be the yellow Used RE icon
+                        #12.Change the RE's radar icon into the yellow Used RE icon:
                         self.RE.changeRadarIcon("sprites/hud/radar/run",self.DAD.RQPositionColour)
                         #13.If the user has no other resurrections:
                         if self.DAD.resurrections.getPlayersResurrectionCount(self.user) == 1:
@@ -1227,7 +1227,7 @@ class DieAnotherDay(GEScenario):
                             #19.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
                             self.RE.changeRadarIconAfterDelay("sprites/hud/radar/run",self.DAD.getSidesRadarColour(self.team,False),3.0)
                             #20.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
-                            self.DAD.REs.deleteREAfterDelay(self.RE.ID,10)
+                            self.DAD.REs.deleteREAfterDelay(self.RE.ID,self.DAD.usedRELocationRevealTime)
                         else: self.DAD.REs.deleteRE(self.RE.ID)
                         #21. Delete this resurrection object
                         self.DAD.resurrections.delete(self)
