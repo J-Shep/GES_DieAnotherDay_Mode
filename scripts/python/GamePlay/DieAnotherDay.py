@@ -26,13 +26,13 @@ Supported Languages: English,French,German,Spanish,Polish and Italian.
 '''
 class DieAnotherDay(GEScenario):
     version = "Alpha 1.10 WIP"
-    
+
     trEliminated = "eliminated"
     trSpawned = "spawned"
 
     maxDistanceBetweenGroundAndJumpingPlayer = 46.00 #It's actually less than this & > 45.00. TODO Joe
     maxDistanceBetweenGroundAndPlayerOrigin = 8.04
-    
+
     #--------------- GUI Constants:
     mColour = GEUtil.CColor(0,150,255,255)
     jColour = GEUtil.Color(255,0,0,255)
@@ -44,24 +44,27 @@ class DieAnotherDay(GEScenario):
     jUsedRERadarColour= GEUtil.Color(255,80,39,255)
 
     RQPositionColour = GEUtil.Color(255,255,0,255)
-    
+
     #Progress Bar Indexs
     resurrectionPBIndex = 2
     resBarY = 0.765
     resQueueMessageChannel = 3
 
+    CVAR_RES_TIME = "dad_resTime"
+    CVAR_USED_RE_REVEAL_TIME = "dad_usedRELocationRevealTime"
+
     def __init__( self ):
         super( DieAnotherDay, self ).__init__()
-        
-        self.resurrectionTime = 5.0 #Server owners who want to change this must use this CVAR: dad_resurrectionDuration
-        self.usedRELocationRevealTime = 10.0 #Server owners who want to change this must use this CVAR: dad_usedRELocationRevealDuration
-        
+
+        self.resurrectionTime = 5 #Change with CVAR: dad_resTime
+        self.usedRELocationRevealTime = 10 #Change with CVAR: dad_usedRELocationRevealTime
+
         self.radar = None
         self.timerTracker = TimerTracker(self)
         self.pltracker = GEPlayerTracker( self )
         self.tokenManager = GEMPGameRules.GetTokenMgr()
         self.HUDSCounts = DieAnotherDay.HUDSurvivorCounts()
-        
+
         self.resurrections = DieAnotherDay.ResurrectionDict(self)
         self.REs = DieAnotherDay.REDict(self)
 
@@ -74,7 +77,7 @@ class DieAnotherDay(GEScenario):
         self.resurrectedPlayers = []
 
         self.eliminatedPlayerCount = 0
-        
+
     def Cleanup( self ):
         super( DieAnotherDay, self ).Cleanup()
         self.resurrections.cleanup()
@@ -107,15 +110,17 @@ class DieAnotherDay(GEScenario):
         GEUtil.PrecacheModel("models/gameplay/gravestone.mdl")
         
         #TODO When the GE:S version after 4.2.3 is released with the nessecary translations, enable the use of these translations:
-        self.CreateCVar("dad_resurrectionDuration", "5", "The duration of resurrections in DAD mode." )
-        self.CreateCVar("dad_usedRELocationRevealDuration","10","How long the location of a used grave stone will be shown to both sides.")
+        self.CreateCVar(DieAnotherDay.CVAR_RES_TIME,"5","The duration of resurrections in DAD mode." )
+        self.CreateCVar(DieAnotherDay.CVAR_USED_RE_REVEAL_TIME,"10","How long the location of a used grave stone will be shown to both sides.")
         
         self.radar = GEMPGameRules.GetRadar()
         self.radar.SetForceRadar(True)
     
     def OnCVarChanged( self, name, oldvalue, newvalue ):
-        if name == "dad_resurrectionDuration": self.resurrectionTime = float(newvalue)
-        elif name == "dad_usedRELocationRevealDuration": self.usedRELocationRevealTime = float(newvalue)
+        if name == DieAnotherDay.CVAR_RES_TIME:
+            self.resurrectionTime = float(newvalue)
+        elif name == DieAnotherDay.CVAR_USED_RE_REVEAL_TIME:
+            self.usedRELocationRevealTime = float(newvalue)
 
     def OnPlayerConnect( self, player ):
         self.pltracker.SetValue(player,self.trSpawned,False)
