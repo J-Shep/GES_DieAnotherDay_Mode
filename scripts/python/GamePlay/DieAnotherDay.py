@@ -129,17 +129,17 @@ class DieAnotherDay(GEScenario):
 
     def OnPlayerDisconnect( self, player ):
         team = player.GetTeamNumber()
-        
-        if team != GEGlobal.TEAM_SPECTATOR:
+
+        if team != GEGlobal.TEAM_SPECTATOR and team != GEGlobal.TEAM_NONE:
             self.resurrections.playerHasDisconnected(player)
             wasEliminated = self.isEliminatedPlayer(player)
-            
+
             if wasEliminated:
                 self.OnEliminatedPlayerLeavesTeam(player,team)
                 self.eliminatedPlayerCount -= 1
-        
+
         if player in self.resurrectedPlayers: self.resurrectedPlayers.remove(player)
-    
+
     def OnPlayerSay(self,player,text):
         if text == "!voodoo" or "!gesrocks":
             if not self.isEliminatedPlayer(player) and player.GetTeamNumber() != GEGlobal.TEAM_SPECTATOR:
@@ -245,7 +245,7 @@ class DieAnotherDay(GEScenario):
     
             GEMPGameRules.ResetAllPlayerDeaths()
             GEMPGameRules.ResetAllPlayersScores()
-        
+
         GEUtil.HudMessage(None, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
 
     def CanPlayerRespawn(self,player):
@@ -262,7 +262,6 @@ class DieAnotherDay(GEScenario):
 
     def OnPlayerKilled( self, victim, killer, weapon ):
         self.pltracker.SetValue(victim,self.trSpawned,False)
-        super( DieAnotherDay, self ).OnPlayerKilled( victim, killer, weapon )
 
         killersTeam = None
         if killer: killersTeam = killer.GetTeamNumber()
@@ -272,6 +271,19 @@ class DieAnotherDay(GEScenario):
             #If the player wasn't forced to commit suicide by changing their team:
             if(not self.pltracker.GetValue(victim,"CanPlayerChangeTeam()_called",False)):
                 self.OnPlayerEliminated(victim,killer,weapon)
+
+        #Change the killer's round score:
+        if not victim:
+            return
+        if not killer or victim == killer:
+            # World kill or suicide
+            victim.AddRoundScore( -1 )
+        elif GEMPGameRules.IsTeamplay() and killer.GetTeamNumber() == victim.GetTeamNumber():
+            # Same-team kill
+            killer.AddRoundScore( -1 )
+        else:
+            # Normal kill
+            killer.AddRoundScore( 1 )
 
     '''
     This function is responsible for eliminating players and for responding to this event.
@@ -313,7 +325,6 @@ class DieAnotherDay(GEScenario):
         self.removePlayerFromTeamsRQueue(player,team)
         self.resurrections.deleteNotInUseRE(team)
         GEUtil.RemoveHudProgressBar(player, DieAnotherDay.resQueueMessageChannel)
-        self.updateResQueuePlayerCount(team)
 
     def OnThink(self):
         if not GEMPGameRules.IsIntermission():
@@ -350,10 +361,10 @@ class DieAnotherDay(GEScenario):
         if numMI6Players == 0 and numJanusPlayers == 0: GEMPGameRules.EndRound()
         elif numMI6Players == 0 and numJanusPlayers > 0: self.teamWins(GEGlobal.TEAM_JANUS)
         elif numMI6Players > 0 and numJanusPlayers == 0: self.teamWins(GEGlobal.TEAM_MI6)
-            
+
     def teamWins(self,teamNumber):
         team = GEMPGameRules.GetTeam(teamNumber)
-        team.IncrementMatchScore( 5 )
+        team.SetRoundScore(1)
         GEMPGameRules.SetTeamWinner(team)
         GEMPGameRules.EndRound()
         
@@ -445,7 +456,7 @@ class DieAnotherDay(GEScenario):
         if team == GEGlobal.TEAM_MI6: rQueue = self.mResurrectionQueue
         else: rQueue = self.jResurrectionQueue
         
-        if player in rQueue: 
+        if player in rQueue:
             rQueue.remove(player)
             self.updateResQueuePlayerCount(team)
 
@@ -468,8 +479,8 @@ class DieAnotherDay(GEScenario):
         #Choose player to be resurrected
         resurrectedPlayer = None
         if areasTeam == GEGlobal.TEAM_MI6 and len(self.mResurrectionQueue) != 0: resurrectedPlayer = self.mResurrectionQueue.pop(0)
-        elif areasTeam == GEGlobal.TEAM_JANUS and len(self.jResurrectionQueue) != 0: resurrectedPlayer = self.jResurrectionQueue.pop(0) 
-        
+        elif areasTeam == GEGlobal.TEAM_JANUS and len(self.jResurrectionQueue) != 0: resurrectedPlayer = self.jResurrectionQueue.pop(0)
+
         if resurrectedPlayer != None:
             self.pltracker.SetValue(resurrectedPlayer,self.trEliminated,False)
             self.eliminatedPlayerCount -= 1
@@ -1164,7 +1175,6 @@ class DieAnotherDay(GEScenario):
                     
                     elif update_type == Timer.UPDATE_RUN:
                         #If the resurrection has failed:
-                        #TODO BUG singleplayer disconnect: RTTI error sometimes
                         if self.hasUserDisconnected or self.hasUserDied or self.team != self.user.GetTeamNumber(): self.resurrectionFailed()
                         elif self.LRREnabled == False and self.proximityEnabled == False: 
                             self.resurrectionFailed() #TESTED
@@ -1216,18 +1226,19 @@ class DieAnotherDay(GEScenario):
                         resurrectedPlayer = self.DAD.resurrectPlayerFromTeamIfTeamHasEliminatedPlayers(self.user)
                         if(resurrectedPlayer != None):
                             self.DAD.resurrectedPlayers.append(resurrectedPlayer)
-                            
-                            #17.Remove the resurrection queue position message from the resurrected player's screen.
+                            #17.Increment the RE user's score:
+                            self.user.AddRoundScore( 1 )
+                            #18.Remove the resurrection queue position message from the resurrected player's screen.
                             GEUtil.RemoveHudProgressBar(resurrectedPlayer, DieAnotherDay.resQueueMessageChannel)
-                            #18.Announce the resurrection.
+                            #19.Announce the resurrection.
                             playersName = resurrectedPlayer.GetPlayerName()
                             GEUtil.EmitGameplayEvent("DAD_Resurrection","%s" % playersName,"%i" % self.team,"%s" % self.user.GetPlayerName())
                             if self.team == GEGlobal.TEAM_MI6: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_MI6_PLAYER_RESURRECTED",playersName)
                             else:GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_RESURRECTED",playersName)
-                            #19.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
+                            #20.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
                             self.RE.changeRadarIconAfterDelay("sprites/hud/radar/run",self.DAD.getSidesRadarColour(self.team,False),3.0)
-                            #20.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
+                            #21.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
                             self.DAD.REs.deleteREAfterDelay(self.RE.ID,self.DAD.usedRELocationRevealTime)
                         else: self.DAD.REs.deleteRE(self.RE.ID)
-                        #21. Delete this resurrection object
+                        #22. Delete this resurrection object
                         self.DAD.resurrections.delete(self)
