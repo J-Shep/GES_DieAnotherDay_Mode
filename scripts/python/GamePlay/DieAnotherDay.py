@@ -262,7 +262,6 @@ class DieAnotherDay(GEScenario):
 
     def OnPlayerKilled( self, victim, killer, weapon ):
         self.pltracker.SetValue(victim,self.trSpawned,False)
-        super( DieAnotherDay, self ).OnPlayerKilled( victim, killer, weapon )
 
         killersTeam = None
         if killer: killersTeam = killer.GetTeamNumber()
@@ -272,6 +271,19 @@ class DieAnotherDay(GEScenario):
             #If the player wasn't forced to commit suicide by changing their team:
             if(not self.pltracker.GetValue(victim,"CanPlayerChangeTeam()_called",False)):
                 self.OnPlayerEliminated(victim,killer,weapon)
+
+        #Change the killer's round score:
+        if not victim:
+            return
+        if not killer or victim == killer:
+            # World kill or suicide
+            victim.AddRoundScore( -1 )
+        elif GEMPGameRules.IsTeamplay() and killer.GetTeamNumber() == victim.GetTeamNumber():
+            # Same-team kill
+            killer.AddRoundScore( -1 )
+        else:
+            # Normal kill
+            killer.AddRoundScore( 1 )
 
     '''
     This function is responsible for eliminating players and for responding to this event.
@@ -352,7 +364,7 @@ class DieAnotherDay(GEScenario):
 
     def teamWins(self,teamNumber):
         team = GEMPGameRules.GetTeam(teamNumber)
-        team.IncrementMatchScore( 5 )
+        team.SetRoundScore(1)
         GEMPGameRules.SetTeamWinner(team)
         GEMPGameRules.EndRound()
         
@@ -1214,18 +1226,19 @@ class DieAnotherDay(GEScenario):
                         resurrectedPlayer = self.DAD.resurrectPlayerFromTeamIfTeamHasEliminatedPlayers(self.user)
                         if(resurrectedPlayer != None):
                             self.DAD.resurrectedPlayers.append(resurrectedPlayer)
-                            
-                            #17.Remove the resurrection queue position message from the resurrected player's screen.
+                            #17.Increment the RE user's score:
+                            self.user.AddRoundScore( 1 )
+                            #18.Remove the resurrection queue position message from the resurrected player's screen.
                             GEUtil.RemoveHudProgressBar(resurrectedPlayer, DieAnotherDay.resQueueMessageChannel)
-                            #18.Announce the resurrection.
+                            #19.Announce the resurrection.
                             playersName = resurrectedPlayer.GetPlayerName()
                             GEUtil.EmitGameplayEvent("DAD_Resurrection","%s" % playersName,"%i" % self.team,"%s" % self.user.GetPlayerName())
                             if self.team == GEGlobal.TEAM_MI6: GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_MI6_PLAYER_RESURRECTED",playersName)
                             else:GEUtil.ClientPrint(None,GEGlobal.HUD_PRINTTALK,"#GES_GP_DAD_JANUS_PLAYER_RESURRECTED",playersName)
-                            #19.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
+                            #20.After a few seconds of being yellow, change the "used RE" icons colour to be the used RE's side's colour.
                             self.RE.changeRadarIconAfterDelay("sprites/hud/radar/run",self.DAD.getSidesRadarColour(self.team,False),3.0)
-                            #20.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
+                            #21.After the "used RE" radar icon has not been yellow for X seconds, remove it and delete the RE.
                             self.DAD.REs.deleteREAfterDelay(self.RE.ID,self.DAD.usedRELocationRevealTime)
                         else: self.DAD.REs.deleteRE(self.RE.ID)
-                        #21. Delete this resurrection object
+                        #22. Delete this resurrection object
                         self.DAD.resurrections.delete(self)
