@@ -497,6 +497,8 @@ class DieAnotherDay(GEScenario):
             elif self.isPlayerJumping(victim):
                 whenSpawnedMoveRETo = victim.GetAbsOrigin()
                 #whenSpawnedMoveRETo = self.getVecForGroundBeneathJumpingPlayer(victim)#TODO Joe
+            elif self.performStaircaseGapCheck(victim):
+                whenSpawnedMoveRETo = victim.GetAbsOrigin()
 
         return whenSpawnedMoveRETo
     
@@ -508,18 +510,32 @@ class DieAnotherDay(GEScenario):
             return False
         return self.canFindGroundBeneathPlayer(player,self.maxDistanceBetweenGroundAndJumpingPlayer)
 
-    def canFindGroundBeneathPlayer(self,player,searchDistance):
-        origin = player.GetAbsOrigin()
-        endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),searchDistance)
-        returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)#GE:S bot bug: can't ignore bot player unless PLAYER is traceable.
+    '''
+    If canFindGroundBeneathPlayer() can't find ground directly beneath a player then they
+    might be standing over a gap between two staircase steps. So this function searches for one of
+    these steps.
+    '''
+    def performStaircaseGapCheck(self,player):
+        def stepSearch(originVector):
+            return GEUtil.Trace(originVector,
+                                GEUtil.VectorMA(originVector,GEUtil.Vector(0,0,-1),self.maxDistanceBetweenGroundAndJumpingPlayer),
+                                GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)
 
-        #In case the trace went through a gap between steps:
-#         if returned == None:
-#             origin.__setitem__(1,origin.__getitem__(1) + 5.00)
-#             endV = GEUtil.VectorMA(origin,GEUtil.Vector(0,0,-1),searchDistance)
-#             returned = GEUtil.Trace(origin,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player)
+        originV = player.GetAbsOrigin()
+        x = originV.__getitem__(0)
+        y = originV.__getitem__(1)
+        z = originV.__getitem__(2)
 
+        returned = stepSearch(GEUtil.Vector(x,y - 3,z))
+        if returned == None: returned = stepSearch(GEUtil.Vector(x + 3,y,z))
+        if returned == None: returned = stepSearch(GEUtil.Vector(x,y + 3,z))
+        if returned == None: returned = stepSearch(GEUtil.Vector(x - 3,y,z))
         return returned != None
+
+    def canFindGroundBeneathPlayer(self,player,searchDistance):
+        originV = player.GetAbsOrigin()
+        endV = GEUtil.VectorMA(originV,GEUtil.Vector(0,0,-1),searchDistance)
+        return GEUtil.Trace(originV,endV,GEUtil.TraceOpt.WORLD | GEUtil.TraceOpt.PLAYER,player) != None
 
     def isEliminatedPlayer(self,player):
         return self.pltracker.GetValue(player,self.trEliminated)
