@@ -30,7 +30,7 @@ class DieAnotherDay(GEScenario):
     trEliminated = "eliminated"
     trSpawned = "spawned"
 
-    maxDistanceBetweenGroundAndJumpingPlayer = 46.00 #It's actually less than this & > 45.00. TODO Joe
+    maxDistanceBetweenGroundAndJumpingPlayer = 86.2 #46.00 jumping on ground   86.2 run and jump down Cradle stairs.
     maxDistanceBetweenGroundAndPlayerOrigin = 8.04
 
     #--------------- GUI Constants:
