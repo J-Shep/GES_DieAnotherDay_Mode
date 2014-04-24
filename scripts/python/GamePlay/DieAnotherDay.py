@@ -25,7 +25,7 @@ Supported Languages: English,French,German,Spanish,Polish and Italian.
 @version: Alpha 1.10
 '''
 class DieAnotherDay(GEScenario):
-    version = "Alpha 1.10 WIP"
+    version = "Alpha 1.10"
 
     trEliminated = "eliminated"
     trSpawned = "spawned"
@@ -179,7 +179,7 @@ class DieAnotherDay(GEScenario):
 
     def OnPlayerSpawn(self,player):
         self.pltracker.SetValue(player,self.trSpawned,True)
-        GEUtil.HudMessage(player, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
+        GEUtil.ClientPrint(player,GEGlobal.HUD_PRINTTALK,"^yIf you experience bugs in this Alpha version please report them in this mode's forum topic.")
         
         #Resurrected player respawns:
         if player in self.resurrectedPlayers: 
