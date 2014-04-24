@@ -266,11 +266,9 @@ class DieAnotherDay(GEScenario):
         killersTeam = None
         if killer: killersTeam = killer.GetTeamNumber()
 
-        #Don't allow team mate elimination greifing:
-        if(victim.GetTeamNumber() != killersTeam or victim == killer):
-            #If the player wasn't forced to commit suicide by changing their team:
-            if(not self.pltracker.GetValue(victim,"CanPlayerChangeTeam()_called",False)):
-                self.OnPlayerEliminated(victim,killer,weapon)
+        #If the player wasn't forced to commit suicide by changing their team:
+        if(not self.pltracker.GetValue(victim,"CanPlayerChangeTeam()_called",False)):
+            self.OnPlayerEliminated(victim,killer,weapon)
 
         #Change the killer's round score:
         if not victim:
@@ -278,7 +276,7 @@ class DieAnotherDay(GEScenario):
         if not killer or victim == killer:
             # World kill or suicide
             victim.AddRoundScore( -1 )
-        elif GEMPGameRules.IsTeamplay() and killer.GetTeamNumber() == victim.GetTeamNumber():
+        elif killer.GetTeamNumber() == victim.GetTeamNumber():
             # Same-team kill
             killer.AddRoundScore( -1 )
         else:
