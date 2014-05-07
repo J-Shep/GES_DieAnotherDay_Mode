@@ -246,8 +246,6 @@ class DieAnotherDay(GEScenario):
             GEMPGameRules.ResetAllPlayerDeaths()
             GEMPGameRules.ResetAllPlayersScores()
 
-        GEUtil.HudMessage(None, "This unfinished DAD version is not meant to be played, it probably has bugs.",-1,-1, GEUtil.CColor(255, 0, 0,255),10.00,20)
-
     def CanPlayerRespawn(self,player):
         notIntermission = not GEMPGameRules.IsIntermission()
         if not player in self.resurrectedPlayers:
